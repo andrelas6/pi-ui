@@ -1,0 +1,52 @@
+# AGENTS.md
+
+Rules for any agent or person working in this repo. These override default habits.
+
+## What this project is
+
+A native macOS app (Swift / SwiftUI) that gives the `pi` coding agent a Cursor-style UI:
+a sidebar of long-lived sessions on the left, a conversation pane on the right.
+
+The app never reimplements the agent. It drives `pi --mode rpc` as a subprocess — one
+process per open session — and speaks pi's JSONL protocol over stdin/stdout.
+
+## Code style
+
+**No comments unless the code genuinely isn't clear.** If a comment is needed, make it one
+line. Don't narrate what the code already says.
+
+**Name things the way you'd say them in Slack.** `loadSessions()`, `startSession()`,
+`sendPrompt()`, `isWaitingForUser`. Not `hydrateSessionSeam()`, `feedTranscriptSink()`,
+`materializeDescriptor()`. If you wouldn't say the word out loud to a coworker, don't use
+it in a function name.
+
+## Dependencies
+
+**Prefer Apple's frameworks and the Swift standard library.** SwiftUI, Foundation, WebKit,
+AppKit, `Process`, `JSONDecoder`, `FileManager`. There is almost always a native answer.
+
+**Keep external libraries as close to zero as possible.** This project should not carry a
+maintenance burden. A dependency needs a reason that outlives the afternoon it was added.
+
+**If you think you need an external library, don't just add it. Write it up first:**
+
+- What it is
+- Why we need it
+- What it costs us to *not* use it (how much code we'd write and maintain instead)
+
+Then let the repo owner decide. Prefer vendoring a small pinned file over adding a package
+manager dependency — a checked-in file doesn't resolve, update, or break on its own.
+
+Current external code, all vendored as pinned files in the app bundle (no SPM, no npm):
+
+| File | What | Why | License |
+|---|---|---|---|
+| `marked.min.js` | Markdown → HTML | Transcript rendering | MIT |
+| `highlight.min.js` | Syntax highlighting | Code blocks (v2) | BSD-3-Clause |
+
+Both are copied from pi's own HTML exporter, so they match how pi renders sessions.
+
+## Git
+
+**Do not add a co-author trailer to commits.** No `Co-Authored-By`, no
+`Generated with` footer. Commit messages are plain.
