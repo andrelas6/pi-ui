@@ -13,6 +13,8 @@ A native macOS app that wraps the `pi` coding agent in a Cursor-style UI.
 - **Transcript renders in a `WKWebView`.** Markdown → HTML via vendored `marked.min.js`.
 - **Vendored, not depended on.** `marked` and `highlight.js` are copied from pi's own HTML
   exporter into our bundle as pinned files. No SPM, no npm, nothing to maintain.
+- **`PI_PATH` locates pi.** Required, no fallback. A GUI launch does not inherit your shell
+  environment, so a Dock launch needs `launchctl setenv PI_PATH ...`. See `AGENTS.md`.
 
 ### Protocol notes that will bite if ignored
 
