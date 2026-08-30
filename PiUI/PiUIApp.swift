@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct PiUIApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var shortcuts = Shortcuts()
 
     var body: some Scene {
