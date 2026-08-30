@@ -5,7 +5,7 @@ import Observation
 @Observable
 final class Chat {
     private(set) var folder: URL?
-    private(set) var transcript = ""
+    private(set) var messages: [ChatMessage] = []
     private(set) var isStreaming = false
     private(set) var problem: String?
     private(set) var openSessionId: String?
@@ -13,6 +13,7 @@ final class Chat {
     private let store: SessionStore
     private var session: PiSession?
     private var eventTask: Task<Void, Never>?
+    private var streamingId: String?
 
     init(store: SessionStore) {
         self.store = store
@@ -39,7 +40,7 @@ final class Chat {
     func closeIfOpen(_ id: String) {
         guard id == openSessionId else { return }
         close()
-        transcript = ""
+        messages = []
     }
 
     func open(_ folder: URL, sessionId: String? = nil) {
@@ -56,7 +57,7 @@ final class Chat {
         let session = PiSession(executable: executable, folder: folder)
         self.folder = folder
         problem = nil
-        transcript = ""
+        messages = []
 
         Task {
             do {
@@ -84,7 +85,7 @@ final class Chat {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty, let session else { return }
 
-        transcript += "› \(message)\n\n"
+        messages.append(ChatMessage(kind: .user, text: message, done: true))
         isStreaming = true
 
         Task {
@@ -128,17 +129,26 @@ final class Chat {
     func handle(_ event: JSONValue) {
         switch event["type"]?.string {
         case "message_update":
-            guard let update = event["assistantMessageEvent"],
-                  update["type"]?.string == "text_delta",
-                  let delta = update["delta"]?.string
-            else { return }
-            transcript += delta
+            guard let update = event["assistantMessageEvent"] else { return }
+            switch update["type"]?.string {
+            case "text_start":
+                let message = ChatMessage(kind: .assistant, text: "", done: false)
+                streamingId = message.id
+                messages.append(message)
+            case "text_delta":
+                guard let delta = update["delta"]?.string else { return }
+                append(delta)
+            case "text_end":
+                finishStreaming()
+            default:
+                return
+            }
 
         case "tool_execution_start":
-            // Without this a tool-using turn looks frozen. Real cards come in S7.
-            if let name = event["toolName"]?.string {
-                transcript += "\n[\(name)]\n"
-            }
+            // Real cards come in S7. Without a marker a tool turn looks frozen.
+            guard let name = event["toolName"]?.string else { return }
+            finishStreaming()
+            messages.append(ChatMessage(kind: .tool, text: name, done: true))
 
         case "message_end":
             guard let message = event["message"],
@@ -146,16 +156,32 @@ final class Chat {
                   message["stopReason"]?.string == "error"
             else { return }
             problem = Self.readable(message["errorMessage"]?.string)
+            finishStreaming()
             isStreaming = false
 
         case "agent_settled":
+            finishStreaming()
             isStreaming = false
-            transcript += "\n\n"
             store.reconcile()
 
         default:
             break
         }
+    }
+
+    private func append(_ delta: String) {
+        guard let streamingId,
+              let index = messages.firstIndex(where: { $0.id == streamingId })
+        else { return }
+        messages[index].text += delta
+    }
+
+    private func finishStreaming() {
+        guard let streamingId,
+              let index = messages.firstIndex(where: { $0.id == streamingId })
+        else { return }
+        messages[index].done = true
+        self.streamingId = nil
     }
 
     /// Provider errors arrive as `402: {"message":"…"}`. Show the sentence, not the blob.

@@ -10,7 +10,7 @@ struct ConversationView: View {
                 ProblemBanner(text: problem)
             }
 
-            if chat.isOpen || !chat.transcript.isEmpty {
+            if chat.isOpen || !chat.messages.isEmpty {
                 transcript
                 Divider()
                 composer
@@ -26,19 +26,7 @@ struct ConversationView: View {
     }
 
     private var transcript: some View {
-        ScrollViewReader { scroller in
-            ScrollView {
-                Text(chat.transcript)
-                    .textSelection(.enabled)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .id("bottom")
-            }
-            .onChange(of: chat.transcript) {
-                scroller.scrollTo("bottom", anchor: .bottom)
-            }
-        }
+        TranscriptView(messages: chat.messages)
     }
 
     private var composer: some View {
