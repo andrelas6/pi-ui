@@ -76,8 +76,16 @@ AGENTS.md        Rules for agents and people working in this repo
 
 Working through v1. See [docs/plans/roadmap.md](docs/plans/roadmap.md) for the full plan.
 
+**v1 is complete.**
+
 - **S1** — project skeleton, sidebar and conversation panes ✅
 - **S2** — RPC client: process spawning, JSONL framing, request/response correlation ✅
-- **S3** — walking skeleton: pick a folder, send a prompt, stream a reply — next
-- **S4** — session index and disk reconciliation
-- **S5** — sidebar: create, rename, delete sessions
+- **S3** — walking skeleton: pick a folder, send a prompt, stream a reply ✅
+- **S4** — session index and disk reconciliation ✅
+- **S5** — sidebar: group, create, rename, delete sessions ✅
+- **S6** — markdown transcript in a web view ✅
+- **S7** — collapsible tool call cards ✅
+- **S8** — permission prompts and the pulsing indicator ✅
+- **S9** — composer queue: steer and follow-up ✅
+
+Next is v2: syntax highlighting, diffs for edits, and the git branch in the sidebar.
