@@ -79,6 +79,14 @@ final class Chat {
         openSessionId = id
         store.remember(id: id, folder: folder, file: file)
         store.markRunning(id)
+        try await loadHistory(session)
+    }
+
+    /// Reopening a session shows what was said before, not an empty pane.
+    private func loadHistory(_ session: PiSession) async throws {
+        let response = try await session.send("get_messages")
+        guard let stored = response["data"]?["messages"]?.array, !stored.isEmpty else { return }
+        messages = History.messages(from: stored)
     }
 
     func send(_ text: String) {
