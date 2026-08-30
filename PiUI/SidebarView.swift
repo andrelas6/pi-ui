@@ -2,17 +2,25 @@ import AppKit
 import SwiftUI
 
 struct SidebarView: View {
-    let chat: Chat
+    let store: SessionStore
+    let chat: Chat?
+    let open: (SavedSession) -> Void
+    let start: (URL) -> Void
 
     var body: some View {
         List {
-            if let folder = chat.folder {
-                Label(folder.lastPathComponent, systemImage: "folder")
-                    .help(folder.path)
+            ForEach(store.sessions.sorted { $0.lastOpenedAt > $1.lastOpenedAt }) { session in
+                SessionRow(
+                    session: session,
+                    isMissing: store.isMissing(session.id),
+                    isOpen: chat?.openSessionId == session.id
+                )
+                .contentShape(.rect)
+                .onTapGesture { open(session) }
             }
         }
         .overlay {
-            if chat.folder == nil {
+            if store.sessions.isEmpty {
                 ContentUnavailableView(
                     "No sessions",
                     systemImage: "bubble.left.and.bubble.right",
@@ -40,7 +48,40 @@ struct SidebarView: View {
         panel.message = "Pick the folder pi should work in"
 
         if panel.runModal() == .OK, let folder = panel.url {
-            chat.open(folder)
+            start(folder)
         }
+    }
+}
+
+private struct SessionRow: View {
+    let session: SavedSession
+    let isMissing: Bool
+    let isOpen: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isOpen ? "circle.fill" : "folder")
+                .foregroundStyle(isOpen ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .font(.caption)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(session.title)
+                    .lineLimit(1)
+                Text(session.folder.path)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
+
+            Spacer()
+
+            if isMissing {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .help("This session's file is gone. pi cannot reopen its history.")
+            }
+        }
+        .padding(.vertical, 2)
     }
 }

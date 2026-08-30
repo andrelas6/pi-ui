@@ -8,13 +8,24 @@ final class Chat {
     private(set) var transcript = ""
     private(set) var isStreaming = false
     private(set) var problem: String?
+    private(set) var openSessionId: String?
 
+    private let store: SessionStore
     private var session: PiSession?
     private var eventTask: Task<Void, Never>?
 
+    init(store: SessionStore) {
+        self.store = store
+    }
+
     var isOpen: Bool { session != nil }
 
-    func open(_ folder: URL) {
+    func reopen(_ saved: SavedSession) {
+        guard !store.isRunning(saved.id) else { return }
+        open(saved.folder, sessionId: saved.id)
+    }
+
+    func open(_ folder: URL, sessionId: String? = nil) {
         close()
 
         let executable: URL
@@ -32,13 +43,24 @@ final class Chat {
 
         Task {
             do {
-                try await session.start()
+                let arguments = sessionId.map { ["--session-id", $0] } ?? []
+                try await session.start(arguments: arguments)
                 self.session = session
                 self.listen(to: session)
+                try await self.rememberSession(session, folder: folder)
             } catch {
                 self.problem = error.localizedDescription
             }
         }
+    }
+
+    private func rememberSession(_ session: PiSession, folder: URL) async throws {
+        let state = try await session.send("get_state")
+        guard let id = state["data"]?["sessionId"]?.string else { return }
+        let file = state["data"]?["sessionFile"]?.string.map { URL(fileURLWithPath: $0) }
+        openSessionId = id
+        store.remember(id: id, folder: folder, file: file)
+        store.markRunning(id)
     }
 
     func send(_ text: String) {
@@ -69,8 +91,12 @@ final class Chat {
         if let session {
             Task { await session.stop() }
         }
+        if let openSessionId {
+            store.markStopped(openSessionId)
+        }
         session = nil
         folder = nil
+        openSessionId = nil
         isStreaming = false
     }
 
@@ -108,6 +134,7 @@ final class Chat {
         case "agent_settled":
             isStreaming = false
             transcript += "\n\n"
+            store.reconcile()
 
         default:
             break
