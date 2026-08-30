@@ -78,4 +78,6 @@ Working through v1. See [docs/plans/roadmap.md](docs/plans/roadmap.md) for the f
 
 - **S1** — project skeleton, sidebar and conversation panes ✅
 - **S2** — RPC client: process spawning, JSONL framing, request/response correlation ✅
-- **S3** — session index and disk reconciliation — next
+- **S3** — walking skeleton: pick a folder, send a prompt, stream a reply — next
+- **S4** — session index and disk reconciliation
+- **S5** — sidebar: create, rename, delete sessions
