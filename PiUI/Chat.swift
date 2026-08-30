@@ -8,6 +8,8 @@ final class Chat {
     private(set) var messages: [ChatMessage] = []
     private(set) var isStreaming = false
     private(set) var problem: String?
+    private(set) var notice: String?
+    private(set) var ask: Ask?
     private(set) var openSessionId: String?
 
     private let store: SessionStore
@@ -57,11 +59,13 @@ final class Chat {
         let session = PiSession(executable: executable, folder: folder)
         self.folder = folder
         problem = nil
+        notice = nil
+        ask = nil
         messages = []
 
         Task {
             do {
-                let arguments = sessionId.map { ["--session-id", $0] } ?? []
+                let arguments = Self.gateArguments + (sessionId.map { ["--session-id", $0] } ?? [])
                 try await session.start(arguments: arguments)
                 self.session = session
                 self.listen(to: session)
@@ -94,6 +98,7 @@ final class Chat {
         guard !message.isEmpty, let session else { return }
 
         messages.append(ChatMessage(kind: .user, text: message, done: true))
+        notice = nil
         isStreaming = true
 
         Task {
@@ -123,6 +128,7 @@ final class Chat {
         session = nil
         folder = nil
         openSessionId = nil
+        ask = nil
         isStreaming = false
     }
 
@@ -186,6 +192,9 @@ final class Chat {
             finishStreaming()
             isStreaming = false
 
+        case "extension_ui_request":
+            receive(event)
+
         case "agent_settled":
             finishStreaming()
             isStreaming = false
@@ -194,6 +203,45 @@ final class Chat {
         default:
             break
         }
+    }
+
+    private func receive(_ event: JSONValue) {
+        switch event["method"]?.string {
+        case "notify":
+            notice = event["message"]?.string
+        // Anything else is fire-and-forget and has no home in this UI yet.
+        default:
+            guard let waiting = Ask(event) else { return }
+            ask = waiting
+        }
+    }
+
+    func answer(_ ask: Ask, confirmed: Bool) {
+        reply(["id": .string(ask.id), "confirmed": .bool(confirmed)])
+    }
+
+    func answer(_ ask: Ask, value: String) {
+        reply(["id": .string(ask.id), "value": .string(value)])
+    }
+
+    func dismiss(_ ask: Ask) {
+        reply(["id": .string(ask.id), "cancelled": .bool(true)])
+    }
+
+    private func reply(_ fields: [String: JSONValue]) {
+        ask = nil
+        guard let session else { return }
+        var payload = fields
+        payload["type"] = .string("extension_ui_response")
+        Task { try? await session.post(payload) }
+    }
+
+    /// pi ships no permission prompts, so the app brings its own gate.
+    private static var gateArguments: [String] {
+        guard let gate = Bundle.main.url(forResource: "permission-gate", withExtension: "js") else {
+            return []
+        }
+        return ["-e", gate.path]
     }
 
     private func toolIndex(_ event: JSONValue) -> Int? {

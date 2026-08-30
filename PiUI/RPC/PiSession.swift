@@ -108,6 +108,15 @@ actor PiSession {
         }
     }
 
+    /// Extension UI replies carry the request's own id and get no response back,
+    /// so they cannot go through `send`.
+    func post(_ fields: [String: JSONValue]) throws {
+        guard let input else { throw Failure.notRunning }
+        let line = try JSONEncoder().encode(JSONValue.object(fields))
+        try input.write(contentsOf: line)
+        try input.write(contentsOf: Data([0x0A]))
+    }
+
     func stop() {
         readTask?.cancel()
         readTask = nil
