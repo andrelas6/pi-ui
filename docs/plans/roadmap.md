@@ -196,25 +196,51 @@ or `follow_up`. Pending queue is visible and clearable via `clear_queue` / `queu
 
 ---
 
-## v2 — Code rendering
+## v2 — UX polish
 
-### S10. Syntax highlighting
+Small things that make it pleasant to live in. v1 works; this makes it quick.
+
+### S10. New session on ⌘T
+**Deliverable:** ⌘T opens the folder picker and starts a session, from anywhere in the app.
+A File menu item carries the shortcut so it is discoverable rather than hidden.
+**Done when:** ⌘T opens the picker with the sidebar unfocused.
+
+### S11. Tool cards open by default
+**Deliverable:** Tool cards stay expanded after they finish. Today they fold themselves on
+completion, which hides the output you were reading.
+**Done when:** a finished bash card still shows its output without a click.
+
+### S12. Jump to a session with ⌘1–⌘9
+**Deliverable:** ⌘1 selects the first session in the sidebar, ⌘2 the second, up to ⌘9.
+
+This requires **stable sidebar order**, which is a change: sessions and folders currently
+sort by most recently used, so rows move under you and ⌘2 would mean something different
+each time. Order becomes oldest first — new sessions append at the bottom and nothing above
+them shifts.
+
+**Done when:** ⌘3 selects the same session before and after using another one.
+
+---
+
+## v3 — Code rendering
+
+### S13. Syntax highlighting
 **Deliverable:** `highlight.min.js` vendored; fenced code blocks highlighted, themed for
 light and dark.
 
-### S11. Diffs
+### S14. Diffs
 **Deliverable:** `edit` and `write` tool cards render a real diff instead of raw arguments.
 Pi's own `template.js` already does line diffing for its HTML export — port that logic
 rather than inventing it.
 
-### S12. Git branch in the sidebar
+### S15. Git branch in the sidebar
 **Deliverable:** Each session row shows the current branch of its folder, read by shelling
 out to `git` with `Process` (no git library). Refreshes when the session becomes active and
 after the agent finishes a turn.
 
 ---
 
-## v3 — Everything pi exposes that we haven't used yet
+## v4 — Everything pi exposes that we haven't used yet
 
 Grouped by what pi gives us, so you can pick by appetite rather than by category.
 
