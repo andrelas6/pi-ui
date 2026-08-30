@@ -49,6 +49,26 @@ final class SessionStore {
         save()
     }
 
+    /// Newest folder first, newest session first inside each folder.
+    var groups: [SessionGroup] {
+        Dictionary(grouping: sessions, by: { $0.folder.path })
+            .map { path, found in
+                SessionGroup(
+                    folder: URL(fileURLWithPath: path),
+                    sessions: found.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+                )
+            }
+            .sorted { left, right in
+                let a = left.sessions.first?.lastOpenedAt ?? .distantPast
+                let b = right.sessions.first?.lastOpenedAt ?? .distantPast
+                return a == b ? left.title < right.title : a > b
+            }
+    }
+
+    func session(_ id: String) -> SavedSession? {
+        sessions.first { $0.id == id }
+    }
+
     func rename(_ id: String, to name: String?) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)

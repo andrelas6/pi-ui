@@ -7,16 +7,29 @@ struct SidebarView: View {
     let open: (SavedSession) -> Void
     let start: (URL) -> Void
 
+    @State private var selected: String?
+    @State private var renaming: SavedSession?
+    @State private var draftName = ""
+    @State private var deleting: SavedSession?
+    @State private var deleteFailed: String?
+
     var body: some View {
-        List {
-            ForEach(store.sessions.sorted { $0.lastOpenedAt > $1.lastOpenedAt }) { session in
-                SessionRow(
-                    session: session,
-                    isMissing: store.isMissing(session.id),
-                    isOpen: chat?.openSessionId == session.id
-                )
-                .contentShape(.rect)
-                .onTapGesture { open(session) }
+        List(selection: $selected) {
+            ForEach(store.groups) { group in
+                Section(group.title) {
+                    ForEach(group.sessions) { session in
+                        SessionRow(
+                            session: session,
+                            isMissing: store.isMissing(session.id),
+                            isRunning: store.isRunning(session.id)
+                        )
+                        .tag(session.id)
+                        .contextMenu {
+                            Button("Rename…") { startRenaming(session) }
+                            Button("Delete…", role: .destructive) { deleting = session }
+                        }
+                    }
+                }
             }
         }
         .overlay {
@@ -37,6 +50,69 @@ struct SidebarView: View {
                 .help("Pick a folder to run pi in")
             }
         }
+        .onChange(of: selected) { _, id in
+            guard let id, let session = store.session(id) else { return }
+            open(session)
+        }
+        .onChange(of: chat?.openSessionId) { _, id in
+            selected = id
+        }
+        .alert("Rename session", isPresented: renamingBinding) {
+            TextField("Name", text: $draftName)
+            Button("Cancel", role: .cancel) { renaming = nil }
+            Button("Rename") { commitRename() }
+        } message: {
+            Text("Shown in the sidebar, and in pi's own session picker.")
+        }
+        .confirmationDialog(
+            "Delete this session?",
+            isPresented: deletingBinding,
+            titleVisibility: .visible
+        ) {
+            Button("Move to Trash", role: .destructive) { commitDelete() }
+            Button("Cancel", role: .cancel) { deleting = nil }
+        } message: {
+            Text(deleting.map { "\($0.title) and its history move to the Trash." } ?? "")
+        }
+        .alert("Could not delete", isPresented: deleteFailedBinding) {
+            Button("OK") { deleteFailed = nil }
+        } message: {
+            Text(deleteFailed ?? "")
+        }
+    }
+
+    private var renamingBinding: Binding<Bool> {
+        Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
+    }
+
+    private var deletingBinding: Binding<Bool> {
+        Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })
+    }
+
+    private var deleteFailedBinding: Binding<Bool> {
+        Binding(get: { deleteFailed != nil }, set: { if !$0 { deleteFailed = nil } })
+    }
+
+    private func startRenaming(_ session: SavedSession) {
+        draftName = session.name ?? session.folder.lastPathComponent
+        renaming = session
+    }
+
+    private func commitRename() {
+        guard let session = renaming else { return }
+        chat?.rename(session.id, to: draftName)
+        renaming = nil
+    }
+
+    private func commitDelete() {
+        guard let session = deleting else { return }
+        chat?.closeIfOpen(session.id)
+        do {
+            try store.trash(session.id)
+        } catch {
+            deleteFailed = error.localizedDescription
+        }
+        deleting = nil
     }
 
     private func pickFolder() {
@@ -56,30 +132,23 @@ struct SidebarView: View {
 private struct SessionRow: View {
     let session: SavedSession
     let isMissing: Bool
-    let isOpen: Bool
+    let isRunning: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: isOpen ? "circle.fill" : "folder")
-                .foregroundStyle(isOpen ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            Image(systemName: isRunning ? "circle.fill" : "bubble.left")
+                .foregroundStyle(isRunning ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .font(.caption)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(session.title)
-                    .lineLimit(1)
-                Text(session.folder.path)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-            }
+            Text(session.title)
+                .lineLimit(1)
 
             Spacer()
 
             if isMissing {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
-                    .help("This session's file is gone. pi cannot reopen its history.")
+                    .help("This session's file is gone. Opening it starts an empty one.")
             }
         }
         .padding(.vertical, 2)
