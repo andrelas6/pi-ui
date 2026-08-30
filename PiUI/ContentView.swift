@@ -29,7 +29,7 @@ struct ContentView: View {
                 newSession: { startNewSession(with: chat) },
                 jump: { number in
                     guard let session = store.session(at: number) else { return }
-                    chat.reopen(session)
+                    chat.reopen(session, thenType: true)
                 }
             )
         }
@@ -67,7 +67,7 @@ struct ContentView: View {
 
     private func startNewSession(with chat: Chat) {
         guard let folder = FolderPicker.pick() else { return }
-        chat.open(folder)
+        chat.open(folder, thenType: true)
     }
 
     private func open(_ saved: SavedSession) {
