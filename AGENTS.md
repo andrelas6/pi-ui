@@ -10,6 +10,31 @@ a sidebar of long-lived sessions on the left, a conversation pane on the right.
 The app never reimplements the agent. It drives `pi --mode rpc` as a subprocess — one
 process per open session — and speaks pi's JSONL protocol over stdin/stdout.
 
+## Running it
+
+**`PI_PATH` is required.** It must point at the pi executable. The app reads it and nothing
+else — there is no search, no fallback, no bundled copy. Without it, sessions cannot start.
+
+```sh
+export PI_PATH=/path/to/pi
+```
+
+A Dock, Finder, or Spotlight launch does not see your shell environment. For those, set it
+where launchd can see it:
+
+```sh
+launchctl setenv PI_PATH /path/to/pi
+```
+
+**Tests need `TEST_RUNNER_PI_PATH`, not `PI_PATH`.** `xcodebuild` does not forward shell
+environment to the test host; it forwards variables prefixed with `TEST_RUNNER_`, stripping
+the prefix. Get this wrong and the integration tests silently *skip* while the run still
+reports success.
+
+```sh
+TEST_RUNNER_PI_PATH=/path/to/pi xcodebuild -project PiUI.xcodeproj -scheme PiUI test
+```
+
 ## Code style
 
 **No comments unless the code genuinely isn't clear.** If a comment is needed, make it one
