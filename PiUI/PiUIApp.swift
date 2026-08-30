@@ -17,7 +17,7 @@ struct PiUIApp: App {
                 Button("New Session…") {
                     shortcuts.askForNewSession()
                 }
-                .keyboardShortcut("t", modifiers: .command)
+                .keyboardShortcut("t", modifiers: .control)
             }
 
             CommandMenu("Sessions") {
