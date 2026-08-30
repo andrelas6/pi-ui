@@ -7,6 +7,7 @@ final class SessionStore {
     private(set) var sessions: [SavedSession] = []
     private(set) var missing: Set<String> = []
 
+    private(set) var branches: [String: String] = [:]
     private var running: Set<String> = []
     private let file: URL
 
@@ -14,6 +15,7 @@ final class SessionStore {
         self.file = file
         load()
         reconcile()
+        refreshBranches()
     }
 
     static var defaultFile: URL {
@@ -118,6 +120,20 @@ final class SessionStore {
         }
         missing = gone
         save()
+    }
+
+    /// Cheap enough to redo on demand, and folders change branch behind our back.
+    func refreshBranches() {
+        var found: [String: String] = [:]
+        for folder in Set(sessions.map(\.folder)) {
+            guard let name = GitBranch.name(in: folder) else { continue }
+            found[folder.path] = name
+        }
+        branches = found
+    }
+
+    func branch(for session: SavedSession) -> String? {
+        branches[session.folder.path]
     }
 
     func isMissing(_ id: String) -> Bool {

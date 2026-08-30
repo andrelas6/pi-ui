@@ -12,6 +12,7 @@ struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
         var preview: String
         var arguments: String
         var output: String
+        var diff: String
         var failed: Bool
 
         /// The one detail worth showing on the collapsed card, per tool.

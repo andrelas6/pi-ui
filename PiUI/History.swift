@@ -43,6 +43,7 @@ enum History {
                     preview: ChatMessage.ToolCall.preview(of: block["arguments"]),
                     arguments: block["arguments"]?.prettyText ?? "",
                     output: "",
+                    diff: "",
                     failed: false
                 )
                 made.append(ChatMessage(id: id, kind: .tool, text: "", done: true, tool: call))
@@ -62,6 +63,7 @@ enum History {
         else { return }
 
         rebuilt[index].tool?.output = message.contentText
+        rebuilt[index].tool?.diff = message["details"]?["diff"]?.string ?? ""
         rebuilt[index].tool?.failed = message["isError"]?.bool ?? false
     }
 

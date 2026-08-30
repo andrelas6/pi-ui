@@ -8,6 +8,15 @@
     --tool-bg: #f0f0f2;
     --link: #0b62d0;
     --danger: #c0392b;
+    --syn-comment: #6e7781;
+    --syn-keyword: #ad3da4;
+    --syn-string: #c41a16;
+    --syn-number: #1c00cf;
+    --syn-function: #4b21b0;
+    --syn-type: #3900a0;
+    --syn-variable: #326d74;
+    --diff-add: rgba(46, 160, 67, 0.16);
+    --diff-del: rgba(207, 34, 46, 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +30,15 @@
         --tool-bg: #26262a;
         --link: #6aa9f0;
         --danger: #e2705f;
+        --syn-comment: #7f8c98;
+        --syn-keyword: #ff7ab2;
+        --syn-string: #ff8170;
+        --syn-number: #d9c97c;
+        --syn-function: #dabaff;
+        --syn-type: #b281eb;
+        --syn-variable: #78c2b3;
+        --diff-add: rgba(63, 185, 80, 0.18);
+        --diff-del: rgba(248, 81, 73, 0.18);
     }
 }
 
@@ -98,6 +116,26 @@ body {
 
 .card .state.running { color: var(--link); }
 .card .state.failed { color: var(--danger); }
+
+.card .diff {
+    margin: 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--rule);
+    background: var(--code-bg);
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    overflow-x: auto;
+    max-height: 420px;
+}
+
+.card .diff .row {
+    display: block;
+    padding: 0 10px;
+    white-space: pre;
+}
+
+.card .diff .add { background: var(--diff-add); }
+.card .diff .del { background: var(--diff-del); }
+.card .diff .same { color: var(--muted); }
 
 .card .args, .card .out {
     margin: 0;
@@ -185,3 +223,19 @@ body {
 }
 
 @keyframes blink { 50% { opacity: 0; } }
+
+.hljs { background: none; color: var(--ink); }
+.hljs-comment, .hljs-quote { color: var(--syn-comment); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: var(--syn-keyword); }
+.hljs-string, .hljs-doctag, .hljs-regexp { color: var(--syn-string); }
+.hljs-number { color: var(--syn-number); }
+.hljs-title, .hljs-title.function_, .hljs-section, .hljs-name { color: var(--syn-function); }
+.hljs-type, .hljs-title.class_, .hljs-built_in, .hljs-class { color: var(--syn-type); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-variable.language_,
+.hljs-params, .hljs-property, .hljs-symbol { color: var(--syn-variable); }
+.hljs-meta, .hljs-meta .hljs-keyword, .hljs-meta .hljs-string { color: var(--syn-keyword); }
+.hljs-subst, .hljs-operator, .hljs-punctuation { color: var(--ink); }
+.hljs-deletion { color: var(--danger); }
+.hljs-addition { color: var(--syn-variable); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }

@@ -67,7 +67,7 @@ Current external code, all vendored as pinned files in the app bundle (no SPM, n
 | File | What | Why | License |
 |---|---|---|---|
 | `marked.min.js` | Markdown → HTML | Transcript rendering | MIT |
-| `highlight.min.js` | Syntax highlighting | Code blocks (v2) | BSD-3-Clause |
+| `highlight.min.js` | Syntax highlighting | Code blocks | BSD-3-Clause |
 
 Both are copied from pi's own HTML exporter, so they match how pi renders sessions.
 

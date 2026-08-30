@@ -3,6 +3,30 @@
 
     marked.setOptions({ gfm: true, breaks: false });
 
+    // Auto-detection is only worth it on a block big enough to guess from.
+    var GUESS_LIMIT = 20000;
+
+    function paintCode(root) {
+        root.querySelectorAll("pre code").forEach(function (block) {
+            if (block.dataset.lit) return;
+            block.dataset.lit = "1";
+
+            var code = block.textContent || "";
+            if (!code || code.length > GUESS_LIMIT) return;
+
+            var named = (block.className.match(/language-([\w+#-]+)/) || [])[1];
+            try {
+                var result = named && hljs.getLanguage(named)
+                    ? hljs.highlight(code, { language: named })
+                    : hljs.highlightAuto(code);
+                block.innerHTML = result.value;
+                block.classList.add("hljs");
+            } catch (ignored) {
+                // A block we cannot parse reads fine unhighlighted.
+            }
+        });
+    }
+
     var log = document.getElementById("log");
     var nodes = {};
 
@@ -32,6 +56,7 @@
             '<span class="state"></span>' +
             "</summary>" +
             '<pre class="args"></pre>' +
+            '<pre class="diff"></pre>' +
             '<pre class="out"></pre>';
         node.appendChild(card);
         return card;
@@ -43,11 +68,29 @@
 
         card.querySelector(".name").textContent = tool.name || "";
         card.querySelector(".preview").textContent = tool.preview || "";
-        card.querySelector(".args").textContent = tool.arguments || "";
+        // A diff says everything the raw edit arguments would, and says it better.
+        var diff = card.querySelector(".diff");
+        var args = card.querySelector(".args");
+        if (tool.diff) {
+            diff.innerHTML = "";
+            tool.diff.split("\n").forEach(function (line) {
+                var row = document.createElement("span");
+                var mark = line.charAt(0);
+                row.className = "row " + (mark === "+" ? "add" : mark === "-" ? "del" : "same");
+                row.textContent = line;
+                diff.appendChild(row);
+            });
+            diff.style.display = "";
+            args.style.display = "none";
+        } else {
+            diff.style.display = "none";
+            args.textContent = tool.arguments || "";
+            args.style.display = "";
+        }
 
         var out = card.querySelector(".out");
         out.textContent = tool.output || "";
-        out.style.display = tool.output ? "" : "none";
+        out.style.display = tool.output && !tool.diff ? "" : "none";
 
         var state = card.querySelector(".state");
         if (!message.done) {
@@ -78,6 +121,7 @@
 
         if (message.kind === "assistant" && message.done) {
             node.innerHTML = marked.parse(message.text || "");
+            paintCode(node);
             return;
         }
 
@@ -95,6 +139,7 @@
                 tool.preview,
                 (tool.arguments || "").length,
                 (tool.output || "").length,
+                (tool.diff || "").length,
                 tool.failed,
                 message.done
             ].join("|");

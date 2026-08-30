@@ -89,6 +89,7 @@ final class Chat {
         openSessionId = id
         store.remember(id: id, folder: folder, file: file)
         store.markRunning(id)
+        store.refreshBranches()
         try await loadHistory(session)
     }
 
@@ -219,6 +220,7 @@ final class Chat {
                 preview: ChatMessage.ToolCall.preview(of: event["args"]),
                 arguments: event["args"]?.prettyText ?? "",
                 output: "",
+                diff: "",
                 failed: false
             )
             messages.append(ChatMessage(id: id, kind: .tool, text: "", done: false, tool: call))
@@ -231,6 +233,8 @@ final class Chat {
         case "tool_execution_end":
             guard let index = toolIndex(event) else { return }
             messages[index].tool?.output = event["result"]?.contentText ?? ""
+            // pi computes the diff itself, so there is no need to reinvent one.
+            messages[index].tool?.diff = event["result"]?["details"]?["diff"]?.string ?? ""
             messages[index].tool?.failed = event["isError"]?.bool ?? false
             messages[index].done = true
 
@@ -262,6 +266,7 @@ final class Chat {
             steering = []
             followUps = []
             store.reconcile()
+            store.refreshBranches()
 
         default:
             break

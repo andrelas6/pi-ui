@@ -21,6 +21,7 @@ struct SidebarView: View {
                         SessionRow(
                             session: session,
                             number: numbers[session.id],
+                            branch: store.branch(for: session),
                             isMissing: store.isMissing(session.id),
                             isRunning: store.isRunning(session.id),
                             isWaiting: chat?.ask != nil && chat?.openSessionId == session.id
@@ -133,6 +134,7 @@ struct SidebarView: View {
 private struct SessionRow: View {
     let session: SavedSession
     let number: Int?
+    let branch: String?
     let isMissing: Bool
     let isRunning: Bool
     let isWaiting: Bool
@@ -143,8 +145,16 @@ private struct SessionRow: View {
                 .foregroundStyle(isRunning ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .font(.caption)
 
-            Text(session.title)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(session.title)
+                    .lineLimit(1)
+                if let branch {
+                    Label(branch, systemImage: "arrow.triangle.branch")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
 
             Spacer()
 
