@@ -10,6 +10,10 @@ final class Chat {
     private(set) var problem: String?
     private(set) var notice: String?
     private(set) var ask: Ask?
+    private(set) var steering: [String] = []
+    private(set) var followUps: [String] = []
+    private(set) var recovered: [String] = []
+    var queueAsFollowUp = false
     private(set) var openSessionId: String?
 
     private let store: SessionStore
@@ -61,6 +65,8 @@ final class Chat {
         problem = nil
         notice = nil
         ask = nil
+        steering = []
+        followUps = []
         messages = []
 
         Task {
@@ -97,10 +103,21 @@ final class Chat {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty, let session else { return }
 
-        messages.append(ChatMessage(kind: .user, text: message, done: true))
         notice = nil
-        isStreaming = true
 
+        if isStreaming {
+            let command = queueAsFollowUp ? "follow_up" : "steer"
+            Task {
+                do {
+                    try await session.send(command, fields: ["message": .string(message)])
+                } catch {
+                    problem = error.localizedDescription
+                }
+            }
+            return
+        }
+
+        isStreaming = true
         Task {
             do {
                 try await session.send("prompt", fields: ["message": .string(message)])
@@ -109,6 +126,40 @@ final class Chat {
                 isStreaming = false
             }
         }
+    }
+
+    /// Abort alone lets queued messages carry on, so clear the queue first.
+    func stopEverything() {
+        guard let session else { return }
+        Task {
+            let cleared = try? await session.send("clear_queue")
+            recovered = Self.queued(cleared?["data"])
+            try? await session.send("abort")
+        }
+    }
+
+    func clearQueue() {
+        guard let session else { return }
+        Task {
+            let cleared = try? await session.send("clear_queue")
+            recovered = Self.queued(cleared?["data"])
+        }
+    }
+
+    func setRecoveredForTesting(_ texts: [String]) {
+        recovered = texts
+    }
+
+    func takeRecovered() -> [String] {
+        let text = recovered
+        recovered = []
+        return text
+    }
+
+    static func queued(_ data: JSONValue?) -> [String] {
+        let steering = data?["steering"]?.array?.compactMap(\.string) ?? []
+        let followUp = data?["followUp"]?.array?.compactMap(\.string) ?? []
+        return steering + followUp
     }
 
     func stop() {
@@ -192,12 +243,24 @@ final class Chat {
             finishStreaming()
             isStreaming = false
 
+        case "message_start":
+            guard let message = event["message"], message["role"]?.string == "user" else { return }
+            let text = History.plainText(message["content"])
+            guard !text.isEmpty else { return }
+            messages.append(ChatMessage(kind: .user, text: text, done: true))
+
+        case "queue_update":
+            steering = event["steering"]?.array?.compactMap(\.string) ?? []
+            followUps = event["followUp"]?.array?.compactMap(\.string) ?? []
+
         case "extension_ui_request":
             receive(event)
 
         case "agent_settled":
             finishStreaming()
             isStreaming = false
+            steering = []
+            followUps = []
             store.reconcile()
 
         default:

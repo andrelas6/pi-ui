@@ -34,28 +34,105 @@ struct ConversationView: View {
     }
 
     private var composer: some View {
-        HStack(spacing: 8) {
-            TextField("Ask pi…", text: $draft, axis: .vertical)
-                .textFieldStyle(.plain)
-                .lineLimit(1...6)
-                .onSubmit(send)
+        VStack(alignment: .leading, spacing: 8) {
+            if !chat.steering.isEmpty || !chat.followUps.isEmpty {
+                QueueStrip(
+                    steering: chat.steering,
+                    followUps: chat.followUps,
+                    clear: chat.clearQueue
+                )
+            }
 
-            if chat.isStreaming {
-                Button("Stop", systemImage: "stop.fill", action: chat.stop)
-                    .labelStyle(.iconOnly)
-                    .help("Abort the current turn")
-            } else {
-                Button("Send", systemImage: "arrow.up.circle.fill", action: send)
-                    .labelStyle(.iconOnly)
-                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            HStack(spacing: 8) {
+                TextField(placeholder, text: $draft, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...6)
+                    .onSubmit(send)
+
+                if chat.isStreaming {
+                    Picker("", selection: Binding(
+                        get: { chat.queueAsFollowUp },
+                        set: { chat.queueAsFollowUp = $0 }
+                    )) {
+                        Text("Steer").tag(false)
+                        Text("After").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                    .help("Steer interrupts the current turn. After waits until it finishes.")
+
+                    Button("Send", systemImage: "arrow.up.circle.fill", action: send)
+                        .labelStyle(.iconOnly)
+                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Button("Stop", systemImage: "stop.fill", action: chat.stopEverything)
+                        .labelStyle(.iconOnly)
+                        .help("Stop the turn and drop anything queued")
+                } else {
+                    Button("Send", systemImage: "arrow.up.circle.fill", action: send)
+                        .labelStyle(.iconOnly)
+                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
         }
         .padding(12)
+        .onChange(of: chat.recovered) { _, texts in
+            guard !texts.isEmpty else { return }
+            let back = chat.takeRecovered().joined(separator: "\n")
+            draft = draft.isEmpty ? back : draft + "\n" + back
+        }
+    }
+
+    private var placeholder: String {
+        guard chat.isStreaming else { return "Ask pi…" }
+        return chat.queueAsFollowUp ? "Queue for when it finishes…" : "Steer the current turn…"
     }
 
     private func send() {
         chat.send(draft)
         draft = ""
+    }
+}
+
+private struct QueueStrip: View {
+    let steering: [String]
+    let followUps: [String]
+    let clear: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(steering, id: \.self) { text in
+                    Chip(label: "steer", text: text)
+                }
+                ForEach(followUps, id: \.self) { text in
+                    Chip(label: "after", text: text)
+                }
+            }
+            Spacer()
+            Button("Clear", action: clear)
+                .buttonStyle(.link)
+                .help("Drop the queued messages and put them back in the box")
+        }
+    }
+}
+
+private struct Chip: View {
+    let label: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(.quaternary, in: Capsule())
+            Text(text)
+                .font(.callout)
+                .lineLimit(1)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

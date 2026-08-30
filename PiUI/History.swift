@@ -65,7 +65,7 @@ enum History {
         rebuilt[index].tool?.failed = message["isError"]?.bool ?? false
     }
 
-    private static func plainText(_ content: JSONValue?) -> String {
+    static func plainText(_ content: JSONValue?) -> String {
         guard let content else { return "" }
         if let text = content.string { return text }
         guard let blocks = content.array else { return "" }
