@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct PiUIApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var shortcuts = Shortcuts()
 
     var body: some Scene {
@@ -16,7 +17,7 @@ struct PiUIApp: App {
                 Button("New Session…") {
                     shortcuts.askForNewSession()
                 }
-                .keyboardShortcut("t", modifiers: .command)
+                .keyboardShortcut("t", modifiers: .control)
             }
 
             CommandMenu("Sessions") {

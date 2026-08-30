@@ -5,6 +5,7 @@ struct ContentView: View {
 
     @State private var store = SessionStore()
     @State private var chat: Chat?
+    @State private var keys = KeyMonitor()
 
     var body: some View {
         NavigationSplitView {
@@ -17,12 +18,20 @@ struct ContentView: View {
                 ContentUnavailableView(
                     "No session open",
                     systemImage: "sidebar.left",
-                    description: Text("Pick a folder with the + button.")
+                    description: Text("Press ⌃T, or use the + button, to pick a folder.")
                 )
             }
         }
         .task {
-            chat = Chat(store: store)
+            let chat = Chat(store: store)
+            self.chat = chat
+            keys.start(
+                newSession: { startNewSession(with: chat) },
+                jump: { number in
+                    guard let session = store.session(at: number) else { return }
+                    chat.reopen(session)
+                }
+            )
         }
         .onChange(of: shortcuts.newSessionCount) { _, _ in
             startNewSession()
@@ -52,8 +61,13 @@ struct ContentView: View {
     }
 
     private func startNewSession() {
+        guard let chat else { return }
+        startNewSession(with: chat)
+    }
+
+    private func startNewSession(with chat: Chat) {
         guard let folder = FolderPicker.pick() else { return }
-        chat?.open(folder)
+        chat.open(folder)
     }
 
     private func open(_ saved: SavedSession) {
