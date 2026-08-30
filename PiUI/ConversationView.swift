@@ -3,6 +3,7 @@ import SwiftUI
 struct ConversationView: View {
     let chat: Chat
     @State private var draft = ""
+    @FocusState private var typing: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,6 +28,10 @@ struct ConversationView: View {
             }
         }
         .navigationTitle(chat.folder?.lastPathComponent ?? "pi")
+        .onChange(of: chat.typingRequests) { _, _ in
+            // A hop, so the box exists before the cursor is sent to it.
+            DispatchQueue.main.async { typing = true }
+        }
     }
 
     private var transcript: some View {
@@ -47,6 +52,7 @@ struct ConversationView: View {
                 TextField(placeholder, text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
+                    .focused($typing)
                     .onSubmit(send)
 
                 if chat.isStreaming {

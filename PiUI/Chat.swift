@@ -13,6 +13,7 @@ final class Chat {
     private(set) var steering: [String] = []
     private(set) var followUps: [String] = []
     private(set) var recovered: [String] = []
+    private(set) var typingRequests = 0
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
 
@@ -27,9 +28,21 @@ final class Chat {
 
     var isOpen: Bool { session != nil }
 
-    func reopen(_ saved: SavedSession) {
-        guard saved.id != openSessionId else { return }
-        open(saved.folder, sessionId: saved.id)
+    func reopen(_ saved: SavedSession, thenType: Bool = false) {
+        guard saved.id != openSessionId else {
+            // Already the open one, so there is nothing to load — just take the cursor.
+            if thenType { askToType() }
+            return
+        }
+        open(saved.folder, sessionId: saved.id, thenType: thenType)
+    }
+
+    func pretendOpenForTesting(_ id: String) {
+        openSessionId = id
+    }
+
+    func askToType() {
+        typingRequests += 1
     }
 
     /// Write the name to the index for display, and to pi so `pi -r` agrees.
@@ -49,7 +62,7 @@ final class Chat {
         messages = []
     }
 
-    func open(_ folder: URL, sessionId: String? = nil) {
+    func open(_ folder: URL, sessionId: String? = nil, thenType: Bool = false) {
         close()
 
         let executable: URL
@@ -76,6 +89,8 @@ final class Chat {
                 self.session = session
                 self.listen(to: session)
                 try await self.rememberSession(session, folder: folder)
+                // The composer only exists once the session is open, so ask from here.
+                if thenType { self.askToType() }
             } catch {
                 self.problem = error.localizedDescription
             }
