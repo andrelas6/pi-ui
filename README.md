@@ -88,4 +88,10 @@ Working through v1. See [docs/plans/roadmap.md](docs/plans/roadmap.md) for the f
 - **S8** — permission prompts and the pulsing indicator ✅
 - **S9** — composer queue: steer and follow-up ✅
 
-Next is v2: syntax highlighting, diffs for edits, and the git branch in the sidebar.
+**v2 (UX polish) and v3 (code rendering) are complete too.**
+
+- **S10–S12** — ⌃T for a new session, tool cards open by default, ⌘1–⌘9 to jump ✅
+- **S13–S15** — syntax highlighting, diffs on edits, git branch in the sidebar ✅
+
+Next is v4: the wider set of things pi exposes — session tree navigation, model and
+thinking controls, compaction, a built-in shell, and more.

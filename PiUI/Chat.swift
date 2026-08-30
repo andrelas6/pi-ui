@@ -89,6 +89,7 @@ final class Chat {
         openSessionId = id
         store.remember(id: id, folder: folder, file: file)
         store.markRunning(id)
+        store.refreshBranches()
         try await loadHistory(session)
     }
 
@@ -265,6 +266,7 @@ final class Chat {
             steering = []
             followUps = []
             store.reconcile()
+            store.refreshBranches()
 
         default:
             break
