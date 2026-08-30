@@ -21,8 +21,25 @@ final class Chat {
     var isOpen: Bool { session != nil }
 
     func reopen(_ saved: SavedSession) {
-        guard !store.isRunning(saved.id) else { return }
+        guard saved.id != openSessionId else { return }
         open(saved.folder, sessionId: saved.id)
+    }
+
+    /// Write the name to the index for display, and to pi so `pi -r` agrees.
+    func rename(_ id: String, to name: String) {
+        store.rename(id, to: name)
+        guard id == openSessionId, let session else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        Task {
+            try? await session.send("set_session_name", fields: ["name": .string(trimmed)])
+        }
+    }
+
+    func closeIfOpen(_ id: String) {
+        guard id == openSessionId else { return }
+        close()
+        transcript = ""
     }
 
     func open(_ folder: URL, sessionId: String? = nil) {

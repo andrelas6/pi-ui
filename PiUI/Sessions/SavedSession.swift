@@ -14,3 +14,11 @@ struct SavedSession: Codable, Identifiable, Hashable, Sendable {
         return folder.lastPathComponent
     }
 }
+
+struct SessionGroup: Identifiable, Hashable, Sendable {
+    let folder: URL
+    let sessions: [SavedSession]
+
+    var id: String { folder.path }
+    var title: String { folder.lastPathComponent }
+}
