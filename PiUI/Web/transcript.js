@@ -33,10 +33,6 @@
             "</summary>" +
             '<pre class="args"></pre>' +
             '<pre class="out"></pre>';
-        // Remember a manual toggle so a finished card does not fold away under you.
-        card.addEventListener("toggle", function () {
-            card.dataset.touched = "1";
-        });
         node.appendChild(card);
         return card;
     }
@@ -66,11 +62,6 @@
         }
 
         card.classList.toggle("is-failed", !!tool.failed);
-
-        // Fold a finished card unless it failed or the reader opened it themselves.
-        if (message.done && !tool.failed && card.dataset.touched !== "1") {
-            card.open = false;
-        }
     }
 
     // Streaming text stays plain so half a fence never renders as a broken block.

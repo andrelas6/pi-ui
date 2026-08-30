@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    let shortcuts: Shortcuts
+
     @State private var store = SessionStore()
     @State private var chat: Chat?
 
@@ -22,6 +24,15 @@ struct ContentView: View {
         .task {
             chat = Chat(store: store)
         }
+        .onChange(of: shortcuts.newSessionCount) { _, _ in
+            startNewSession()
+        }
+        .onChange(of: shortcuts.jumpTo) { _, number in
+            guard let number else { return }
+            shortcuts.jumpTo = nil
+            guard let session = store.session(at: number) else { return }
+            chat?.reopen(session)
+        }
         .sheet(item: sheetBinding) { ask in
             AskSheet(
                 ask: ask,
@@ -37,6 +48,11 @@ struct ContentView: View {
     }
 
     private func start(_ folder: URL) {
+        chat?.open(folder)
+    }
+
+    private func startNewSession() {
+        guard let folder = FolderPicker.pick() else { return }
         chat?.open(folder)
     }
 

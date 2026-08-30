@@ -49,20 +49,32 @@ final class SessionStore {
         save()
     }
 
-    /// Newest folder first, newest session first inside each folder.
+    /// Oldest first. Rows must never move, or ⌘1–⌘9 would mean a different session
+    /// each time you used one.
     var groups: [SessionGroup] {
         Dictionary(grouping: sessions, by: { $0.folder.path })
             .map { path, found in
                 SessionGroup(
                     folder: URL(fileURLWithPath: path),
-                    sessions: found.sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+                    sessions: found.sorted { $0.createdAt < $1.createdAt }
                 )
             }
             .sorted { left, right in
-                let a = left.sessions.first?.lastOpenedAt ?? .distantPast
-                let b = right.sessions.first?.lastOpenedAt ?? .distantPast
-                return a == b ? left.title < right.title : a > b
+                let a = left.sessions.first?.createdAt ?? .distantPast
+                let b = right.sessions.first?.createdAt ?? .distantPast
+                return a == b ? left.title < right.title : a < b
             }
+    }
+
+    /// The sidebar read top to bottom, which is what ⌘1–⌘9 index into.
+    var ordered: [SavedSession] {
+        groups.flatMap(\.sessions)
+    }
+
+    func session(at number: Int) -> SavedSession? {
+        let list = ordered
+        guard number >= 1, number <= list.count else { return nil }
+        return list[number - 1]
     }
 
     func session(_ id: String) -> SavedSession? {
