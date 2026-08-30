@@ -7,6 +7,7 @@
     --code-bg: #f5f5f7;
     --tool-bg: #f0f0f2;
     --link: #0b62d0;
+    --danger: #c0392b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,6 +20,7 @@
         --code-bg: #262629;
         --tool-bg: #26262a;
         --link: #6aa9f0;
+        --danger: #e2705f;
     }
 }
 
@@ -48,15 +50,67 @@ body {
     white-space: pre-wrap;
 }
 
-.msg.tool {
-    display: inline-block;
+.card {
     background: var(--tool-bg);
     border: 1px solid var(--rule);
-    border-radius: 6px;
-    padding: 2px 8px;
-    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card.is-failed { border-color: var(--danger); }
+
+.card > summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: default;
+    list-style: none;
+    font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.card > summary::-webkit-details-marker { display: none; }
+
+.card > summary::before {
+    content: "\25B8";
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.card[open] > summary::before { content: "\25BE"; }
+
+.card .name { font-weight: 600; }
+
+.card .preview {
+    color: var(--muted);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card .state {
+    font-size: 11px;
+    padding: 0 6px;
+    border-radius: 4px;
     color: var(--muted);
 }
+
+.card .state.running { color: var(--link); }
+.card .state.failed { color: var(--danger); }
+
+.card .args, .card .out {
+    margin: 0;
+    padding: 8px 10px;
+    border-top: 1px solid var(--rule);
+    background: var(--code-bg);
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-height: 320px;
+}
+
+.card .args { color: var(--muted); }
 
 .msg.assistant.streaming { white-space: pre-wrap; }
 

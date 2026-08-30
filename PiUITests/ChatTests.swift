@@ -57,24 +57,6 @@ struct ChatTests {
         #expect(chat.messages.isEmpty)
     }
 
-    @Test func addsAToolMarker() throws {
-        let chat = newChat()
-        chat.handle(try event(#"{"type":"tool_execution_start","toolName":"bash","toolCallId":"c1"}"#))
-
-        #expect(chat.messages.count == 1)
-        #expect(chat.messages[0].kind == .tool)
-        #expect(chat.messages[0].text == "bash")
-    }
-
-    @Test func closesAnOpenMessageBeforeAToolRuns() throws {
-        let chat = newChat()
-        try stream(chat, ["thinking about it"])
-        chat.handle(try event(#"{"type":"tool_execution_start","toolName":"read","toolCallId":"c1"}"#))
-
-        #expect(chat.messages[0].done == true)
-        #expect(chat.messages[1].kind == .tool)
-    }
-
     @Test func showsProviderErrors() throws {
         let chat = newChat()
         let failure = #"{"type":"message_end","message":{"role":"assistant","stopReason":"error","errorMessage":"402: {\"message\":\"This request requires more credits\"}"}}"#

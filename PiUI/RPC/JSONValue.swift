@@ -62,4 +62,22 @@ extension JSONValue {
         guard case .number(let value) = self else { return nil }
         return value
     }
+
+    var array: [JSONValue]? {
+        guard case .array(let value) = self else { return nil }
+        return value
+    }
+
+    /// Tool results carry their text in a `content` array of typed blocks.
+    var contentText: String {
+        guard let blocks = self["content"]?.array else { return "" }
+        return blocks.compactMap { $0["text"]?.string }.joined()
+    }
+
+    var prettyText: String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(self) else { return "" }
+        return String(decoding: data, as: UTF8.self)
+    }
 }

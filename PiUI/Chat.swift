@@ -145,10 +145,29 @@ final class Chat {
             }
 
         case "tool_execution_start":
-            // Real cards come in S7. Without a marker a tool turn looks frozen.
-            guard let name = event["toolName"]?.string else { return }
+            guard let id = event["toolCallId"]?.string,
+                  let name = event["toolName"]?.string
+            else { return }
             finishStreaming()
-            messages.append(ChatMessage(kind: .tool, text: name, done: true))
+            let call = ChatMessage.ToolCall(
+                name: name,
+                preview: ChatMessage.ToolCall.preview(of: event["args"]),
+                arguments: event["args"]?.prettyText ?? "",
+                output: "",
+                failed: false
+            )
+            messages.append(ChatMessage(id: id, kind: .tool, text: "", done: false, tool: call))
+
+        // Tools run concurrently, so match on toolCallId rather than position.
+        case "tool_execution_update":
+            guard let index = toolIndex(event) else { return }
+            messages[index].tool?.output = event["partialResult"]?.contentText ?? ""
+
+        case "tool_execution_end":
+            guard let index = toolIndex(event) else { return }
+            messages[index].tool?.output = event["result"]?.contentText ?? ""
+            messages[index].tool?.failed = event["isError"]?.bool ?? false
+            messages[index].done = true
 
         case "message_end":
             guard let message = event["message"],
@@ -167,6 +186,11 @@ final class Chat {
         default:
             break
         }
+    }
+
+    private func toolIndex(_ event: JSONValue) -> Int? {
+        guard let id = event["toolCallId"]?.string else { return nil }
+        return messages.firstIndex { $0.id == id && $0.kind == .tool }
     }
 
     private func append(_ delta: String) {

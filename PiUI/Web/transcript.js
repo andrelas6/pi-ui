@@ -21,9 +21,67 @@
         return node;
     }
 
+    function buildCard(node) {
+        var card = document.createElement("details");
+        card.className = "card";
+        card.open = true;
+        card.innerHTML =
+            '<summary>' +
+            '<span class="name"></span>' +
+            '<span class="preview"></span>' +
+            '<span class="state"></span>' +
+            "</summary>" +
+            '<pre class="args"></pre>' +
+            '<pre class="out"></pre>';
+        // Remember a manual toggle so a finished card does not fold away under you.
+        card.addEventListener("toggle", function () {
+            card.dataset.touched = "1";
+        });
+        node.appendChild(card);
+        return card;
+    }
+
+    function paintTool(node, message) {
+        var card = node.firstChild || buildCard(node);
+        var tool = message.tool || {};
+
+        card.querySelector(".name").textContent = tool.name || "";
+        card.querySelector(".preview").textContent = tool.preview || "";
+        card.querySelector(".args").textContent = tool.arguments || "";
+
+        var out = card.querySelector(".out");
+        out.textContent = tool.output || "";
+        out.style.display = tool.output ? "" : "none";
+
+        var state = card.querySelector(".state");
+        if (!message.done) {
+            state.textContent = "running";
+            state.className = "state running";
+        } else if (tool.failed) {
+            state.textContent = "failed";
+            state.className = "state failed";
+        } else {
+            state.textContent = "done";
+            state.className = "state done";
+        }
+
+        card.classList.toggle("is-failed", !!tool.failed);
+
+        // Fold a finished card unless it failed or the reader opened it themselves.
+        if (message.done && !tool.failed && card.dataset.touched !== "1") {
+            card.open = false;
+        }
+    }
+
     // Streaming text stays plain so half a fence never renders as a broken block.
     // It becomes markdown once the message is complete.
     function paint(node, message) {
+        if (message.kind === "tool") {
+            node.className = "msg tool";
+            paintTool(node, message);
+            return;
+        }
+
         var streaming = message.kind === "assistant" && !message.done;
         node.className = "msg " + message.kind + (streaming ? " streaming" : "");
 
@@ -38,6 +96,21 @@
         }
     }
 
+    function signature(message) {
+        if (message.kind === "tool") {
+            var tool = message.tool || {};
+            return [
+                tool.name,
+                tool.preview,
+                (tool.arguments || "").length,
+                (tool.output || "").length,
+                tool.failed,
+                message.done
+            ].join("|");
+        }
+        return message.text.length + "|" + message.done;
+    }
+
     window.piui = {
         render: function (messages) {
             var stick = pinnedToBottom();
@@ -46,9 +119,9 @@
             messages.forEach(function (message) {
                 seen[message.id] = true;
                 var node = element(message);
-                var signature = message.text.length + "|" + message.done;
-                if (node.dataset.signature !== signature) {
-                    node.dataset.signature = signature;
+                var next = signature(message);
+                if (node.dataset.signature !== next) {
+                    node.dataset.signature = next;
                     paint(node, message);
                 }
             });
