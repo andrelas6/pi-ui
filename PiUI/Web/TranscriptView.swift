@@ -29,6 +29,7 @@ struct TranscriptView: NSViewRepresentable {
     static let page: String = {
         let css = bundled("transcript", "css")
         let marked = bundled("marked.min", "js")
+        let highlight = bundled("highlight.min", "js")
         let script = bundled("transcript", "js")
         return """
         <!doctype html>
@@ -36,6 +37,7 @@ struct TranscriptView: NSViewRepresentable {
         <style>\(css)</style>
         </head><body><div id="log"></div>
         <script>\(marked)</script>
+        <script>\(highlight)</script>
         <script>\(script)</script>
         </body></html>
         """
