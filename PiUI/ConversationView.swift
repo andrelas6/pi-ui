@@ -7,7 +7,11 @@ struct ConversationView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let problem = chat.problem {
-                ProblemBanner(text: problem)
+                Banner(text: problem, icon: "exclamationmark.triangle.fill", tint: .red)
+            }
+
+            if let notice = chat.notice {
+                Banner(text: notice, icon: "info.circle.fill", tint: .blue)
             }
 
             if chat.isOpen || !chat.messages.isEmpty {
@@ -55,18 +59,21 @@ struct ConversationView: View {
     }
 }
 
-private struct ProblemBanner: View {
+private struct Banner: View {
     let text: String
+    let icon: String
+    let tint: Color
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: icon)
+                .foregroundStyle(tint)
             Text(text)
                 .textSelection(.enabled)
             Spacer()
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.red.opacity(0.12))
+        .background(tint.opacity(0.12))
     }
 }

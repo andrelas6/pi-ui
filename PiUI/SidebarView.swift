@@ -21,7 +21,8 @@ struct SidebarView: View {
                         SessionRow(
                             session: session,
                             isMissing: store.isMissing(session.id),
-                            isRunning: store.isRunning(session.id)
+                            isRunning: store.isRunning(session.id),
+                            isWaiting: chat?.ask != nil && chat?.openSessionId == session.id
                         )
                         .tag(session.id)
                         .contextMenu {
@@ -133,6 +134,7 @@ private struct SessionRow: View {
     let session: SavedSession
     let isMissing: Bool
     let isRunning: Bool
+    let isWaiting: Bool
 
     var body: some View {
         HStack(spacing: 6) {
@@ -144,6 +146,10 @@ private struct SessionRow: View {
                 .lineLimit(1)
 
             Spacer()
+
+            if isWaiting {
+                WaitingDot()
+            }
 
             if isMissing {
                 Image(systemName: "exclamationmark.triangle.fill")
