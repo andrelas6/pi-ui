@@ -116,7 +116,18 @@ JSONL commands, reads JSONL events, and matches responses to requests by `id`.
 file path. Verified working already:
 `echo '{"id":"1","type":"get_state"}' | pi --mode rpc --no-session`
 
-### S3. Session index and disk reconciliation
+### S3. Walking skeleton
+**Deliverable:** A "Pick a folder" button opens `NSOpenPanel` and starts `pi --mode rpc`
+there. A composer sends a prompt. Assistant text streams into the pane as **plain text**.
+Abort works. One session at a time, nothing persisted — the index and sidebar come next.
+When `PI_PATH` is unset or wrong, the app says so plainly instead of failing quietly.
+**Done when:** a real prompt round-trips end to end against a real repo.
+
+This is the milestone that proves the design, and the first build that is actually usable.
+It runs ahead of the index and sidebar deliberately: three subtasks of scaffolding before
+any feedback defers all the risk to the end.
+
+### S4. Session index and disk reconciliation
 **Deliverable:** A store that persists the session list across launches and, on startup,
 checks each session's `.jsonl` on disk. Sessions get a state: `ok` or `missing`.
 
@@ -128,22 +139,18 @@ Three rules from "How pi stores sessions" are load-bearing here:
 **Done when:** deleting a session file by hand and relaunching marks that session `missing`
 without losing it from the list.
 
-### S4. Sidebar
+### S5. Sidebar
 **Deliverable:** Sidebar listing sessions grouped by folder, with a "New session" button
-(opens `NSOpenPanel` to pick a folder), inline rename, and delete. Rename writes to the app
-index for display and pushes `set_session_name` to pi when the session is running, so
-`pi -r` in the terminal shows the same name. Sessions marked
-`missing` show a warning icon with a tooltip. Delete moves the file to Trash via
-`FileManager.trashItem` and drops it from the index.
-**Done when:** you can create, rename, delete, and relaunch with the list intact.
+(opens `NSOpenPanel` to pick a folder), inline rename, and delete. This replaces S3's
+throwaway folder button with the real flow. Rename writes to the app index for display and
+pushes `set_session_name` to pi when the session is running, so `pi -r` in the terminal
+shows the same name. Sessions marked `missing` show a warning icon with a tooltip. Delete
+moves the file to Trash via `FileManager.trashItem` and drops it from the index.
 
-### S5. Walking skeleton
-**Deliverable:** Clicking a session starts its RPC process; typing a prompt sends it;
-assistant text streams into the pane as **plain text**. Abort button works. Clicking a
-session that is already running focuses it instead of spawning a second `pi` — session
-files have no write lock, so two processes on one file corrupt the tree.
-**Done when:** a real prompt round-trips end to end in the app. This is the milestone that
-proves the whole design.
+Clicking a session that is already running focuses it instead of spawning a second `pi` —
+session files have no write lock, so two processes on one file corrupt the tree.
+
+**Done when:** you can create, rename, delete, and relaunch with the list intact.
 
 ### S6. Markdown transcript
 **Deliverable:** Replace the plain-text pane with a `WKWebView`. Completed messages render
