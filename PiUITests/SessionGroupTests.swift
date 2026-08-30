@@ -32,11 +32,13 @@ struct SessionGroupTests {
         #expect(groups.first { $0.title == "two" }?.sessions.count == 1)
     }
 
-    @Test func putsTheMostRecentFolderFirst() {
+    /// Was most-recent-first until ⌘1–⌘9 arrived. Rows have to hold still for a
+    /// number to keep meaning the same session, so the oldest folder leads.
+    @Test func putsTheOldestFolderFirst() {
         let store = newStore()
         store.remember(id: "old", folder: URL(fileURLWithPath: "/tmp/old"), file: nil)
         store.remember(id: "new", folder: URL(fileURLWithPath: "/tmp/new"), file: nil)
-        #expect(store.groups.first?.title == "new")
+        #expect(store.groups.first?.title == "old")
     }
 
     /// Two folders whose pi directory names collide must stay separate groups.

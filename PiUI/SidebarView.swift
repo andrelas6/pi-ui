@@ -20,6 +20,7 @@ struct SidebarView: View {
                     ForEach(group.sessions) { session in
                         SessionRow(
                             session: session,
+                            number: numbers[session.id],
                             isMissing: store.isMissing(session.id),
                             isRunning: store.isRunning(session.id),
                             isWaiting: chat?.ask != nil && chat?.openSessionId == session.id
@@ -82,6 +83,13 @@ struct SidebarView: View {
         }
     }
 
+    /// Only the first nine rows get a shortcut, matching ⌘1–⌘9.
+    private var numbers: [String: Int] {
+        Dictionary(
+            uniqueKeysWithValues: store.ordered.prefix(9).enumerated().map { ($0.element.id, $0.offset + 1) }
+        )
+    }
+
     private var renamingBinding: Binding<Bool> {
         Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
     }
@@ -117,21 +125,14 @@ struct SidebarView: View {
     }
 
     private func pickFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Open"
-        panel.message = "Pick the folder pi should work in"
-
-        if panel.runModal() == .OK, let folder = panel.url {
-            start(folder)
-        }
+        guard let folder = FolderPicker.pick() else { return }
+        start(folder)
     }
 }
 
 private struct SessionRow: View {
     let session: SavedSession
+    let number: Int?
     let isMissing: Bool
     let isRunning: Bool
     let isWaiting: Bool
@@ -146,6 +147,12 @@ private struct SessionRow: View {
                 .lineLimit(1)
 
             Spacer()
+
+            if let number {
+                Text("⌘\(number)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
 
             if isWaiting {
                 WaitingDot()
