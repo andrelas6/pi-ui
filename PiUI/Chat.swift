@@ -35,6 +35,11 @@ final class Chat {
 
     var isOpen: Bool { session != nil }
 
+    var branch: String? {
+        guard let folder else { return nil }
+        return store.branches[folder.path]
+    }
+
     func markOpenForTesting(_ id: String) {
         openSessionId = id
     }
@@ -216,7 +221,12 @@ final class Chat {
             guard let update = event["assistantMessageEvent"] else { return }
             switch update["type"]?.string {
             case "text_start":
-                let message = ChatMessage(kind: .assistant, text: "", done: false)
+                let message = ChatMessage(
+                    kind: .assistant,
+                    text: "",
+                    done: false,
+                    kicker: Kickers.agent(model: modelName)
+                )
                 streamingId = message.id
                 messages.append(message)
             case "text_delta":
@@ -239,6 +249,7 @@ final class Chat {
                 arguments: event["args"]?.prettyText ?? "",
                 output: "",
                 diff: "",
+                result: "",
                 failed: false
             )
             messages.append(ChatMessage(id: id, kind: .tool, text: "", done: false, tool: call))
@@ -252,7 +263,9 @@ final class Chat {
             guard let index = toolIndex(event) else { return }
             messages[index].tool?.output = event["result"]?.contentText ?? ""
             // pi computes the diff itself, so there is no need to reinvent one.
-            messages[index].tool?.diff = event["result"]?["details"]?["diff"]?.string ?? ""
+            let diff = event["result"]?["details"]?["diff"]?.string ?? ""
+            messages[index].tool?.diff = diff
+            messages[index].tool?.result = DiffSummary.text(diff)
             messages[index].tool?.failed = event["isError"]?.bool ?? false
             messages[index].done = true
 
@@ -269,7 +282,10 @@ final class Chat {
             guard let message = event["message"], message["role"]?.string == "user" else { return }
             let text = History.plainText(message["content"])
             guard !text.isEmpty else { return }
-            messages.append(ChatMessage(kind: .user, text: text, done: true))
+            let at = Kickers.moment(fromMilliseconds: message["timestamp"]?.number)
+            messages.append(
+                ChatMessage(kind: .user, text: text, done: true, kicker: Kickers.user(at: at))
+            )
 
         case "queue_update":
             steering = event["steering"]?.array?.compactMap(\.string) ?? []
@@ -279,6 +295,7 @@ final class Chat {
             receive(event)
 
         case "agent_settled":
+            closeUnansweredRequests()
             finishStreaming()
             isStreaming = false
             steering = []
@@ -305,6 +322,21 @@ final class Chat {
                 return
             }
             ask = waiting
+            guard waiting.method == .confirm else { return }
+            messages.append(
+                ChatMessage(
+                    id: waiting.id,
+                    kind: .permission,
+                    text: "",
+                    done: false,
+                    kicker: "permission requested",
+                    request: ChatMessage.Request(
+                        tool: waiting.title,
+                        detail: waiting.message,
+                        answer: ""
+                    )
+                )
+            )
         }
     }
 
@@ -329,6 +361,21 @@ final class Chat {
 
     func dismiss(_ ask: Ask) {
         reply(["id": .string(ask.id), "cancelled": .bool(true)])
+    }
+
+    /// Answering from the log: the card records what was chosen and stops offering.
+    func answerRequest(id: String, choice: String) {
+        guard let waiting = ask, waiting.id == id else { return }
+        if let index = messages.firstIndex(where: { $0.id == id && $0.kind == .permission }) {
+            messages[index].request?.answer = choice
+            messages[index].done = true
+        }
+
+        switch choice {
+        case ChatMessage.Request.always: alwaysAllow(waiting)
+        case ChatMessage.Request.allow: answer(waiting, confirmed: true)
+        default: answer(waiting, confirmed: false)
+        }
     }
 
     private func reply(_ fields: [String: JSONValue]) {
@@ -401,6 +448,13 @@ final class Chat {
               let index = messages.firstIndex(where: { $0.id == streamingId })
         else { return }
         messages[index].text += delta
+    }
+
+    private func closeUnansweredRequests() {
+        for index in messages.indices where messages[index].kind == .permission {
+            guard messages[index].done == false else { continue }
+            messages[index].done = true
+        }
     }
 
     private func finishStreaming() {

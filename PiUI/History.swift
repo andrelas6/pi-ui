@@ -10,7 +10,10 @@ enum History {
             case "user":
                 let text = plainText(message["content"])
                 guard !text.isEmpty else { continue }
-                rebuilt.append(ChatMessage(kind: .user, text: text, done: true))
+                let at = Kickers.moment(fromMilliseconds: message["timestamp"]?.number)
+                rebuilt.append(
+                    ChatMessage(kind: .user, text: text, done: true, kicker: Kickers.user(at: at))
+                )
 
             case "assistant":
                 rebuilt.append(contentsOf: fromAssistant(message))
@@ -34,7 +37,15 @@ enum History {
             case "text":
                 let text = block["text"]?.string ?? ""
                 guard !text.isEmpty else { continue }
-                made.append(ChatMessage(kind: .assistant, text: text, done: true))
+                // Stored messages name the model that produced them.
+                made.append(
+                    ChatMessage(
+                        kind: .assistant,
+                        text: text,
+                        done: true,
+                        kicker: Kickers.agent(model: message["model"]?.string ?? "")
+                    )
+                )
 
             case "toolCall":
                 guard let id = block["id"]?.string else { continue }
@@ -44,6 +55,7 @@ enum History {
                     arguments: block["arguments"]?.prettyText ?? "",
                     output: "",
                     diff: "",
+                    result: "",
                     failed: false
                 )
                 made.append(ChatMessage(id: id, kind: .tool, text: "", done: true, tool: call))
@@ -63,7 +75,9 @@ enum History {
         else { return }
 
         rebuilt[index].tool?.output = message.contentText
-        rebuilt[index].tool?.diff = message["details"]?["diff"]?.string ?? ""
+        let diff = message["details"]?["diff"]?.string ?? ""
+        rebuilt[index].tool?.diff = diff
+        rebuilt[index].tool?.result = DiffSummary.text(diff)
         rebuilt[index].tool?.failed = message["isError"]?.bool ?? false
     }
 

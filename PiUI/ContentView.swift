@@ -8,20 +8,27 @@ struct ContentView: View {
     @State private var keys = KeyMonitor()
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView(store: store, pool: pool, open: show, start: start)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 380)
-        } detail: {
-            if let chat = pool?.current {
-                ConversationView(chat: chat)
-            } else {
-                ContentUnavailableView(
-                    "No session open",
-                    systemImage: "sidebar.left",
-                    description: Text("Press ⌃T, or use the + button, to pick a folder.")
-                )
+        VStack(spacing: 0) {
+            TitleBar(
+                appName: PiUIApp.name,
+                path: pool?.current?.folder?.shortPath,
+                sessionCount: store.sessions.count,
+                needingInput: needingInput
+            )
+            Hairline()
+
+            HStack(spacing: 0) {
+                SidebarView(store: store, pool: pool, open: show, start: start)
+                    .frame(width: Frame.sessionRail)
+
+                Hairline(vertical: true)
+
+                conversation
+                    .frame(minWidth: Frame.mainMinimum, maxWidth: .infinity)
             }
+            .frame(maxHeight: .infinity)
         }
+        .background(Palette.bg)
         .task {
             let pool = ChatPool(store: store)
             self.pool = pool
@@ -30,6 +37,18 @@ struct ContentView: View {
                 jump: { number in
                     guard let session = store.session(at: number) else { return }
                     pool.show(session, thenType: true)
+                },
+                interrupt: {
+                    guard let chat = pool.current, chat.isStreaming else { return }
+                    chat.stopEverything()
+                },
+                answer: { choice in
+                    guard let chat = pool.current,
+                          let ask = chat.ask,
+                          ask.method == .confirm
+                    else { return false }
+                    chat.answerRequest(id: ask.id, choice: choice)
+                    return true
                 }
             )
         }
@@ -54,8 +73,36 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var conversation: some View {
+        if let chat = pool?.current {
+            ConversationView(chat: chat)
+        } else {
+            VStack(spacing: Space.three) {
+                Kicker(text: "no session open", size: 13, tracking: 0.14)
+                Text("Press ⌃T, or use the + button, to pick a folder.")
+                    .font(Typeface.body(13))
+                    .foregroundStyle(Palette.neutral(600))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var needingInput: Int {
+        guard let pool else { return 0 }
+        return store.sessions.filter { pool.isWaiting($0.id) }.count
+    }
+
+    /// A confirm is answered in the transcript; select, input and editor still need
+    /// somewhere to go.
     private var sheetBinding: Binding<Ask?> {
-        Binding(get: { pool?.current?.ask }, set: { _ in })
+        Binding(
+            get: {
+                guard let ask = pool?.current?.ask, ask.method != .confirm else { return nil }
+                return ask
+            },
+            set: { _ in }
+        )
     }
 
     private func start(_ folder: URL) {
