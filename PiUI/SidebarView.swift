@@ -7,7 +7,6 @@ struct SidebarView: View {
     let open: (SavedSession) -> Void
     let start: (URL) -> Void
 
-    @State private var selected: String?
     @State private var renaming: SavedSession?
     @State private var draftName = ""
     @State private var deleting: SavedSession?
@@ -18,6 +17,8 @@ struct SidebarView: View {
             header
             Hairline()
             sessions
+            Hairline()
+            Legend()
         }
         .background(Palette.bg)
     }
@@ -40,35 +41,22 @@ struct SidebarView: View {
     }
 
     private var sessions: some View {
-        List(selection: $selected) {
-            ForEach(store.groups) { group in
-                Section(group.title) {
-                    ForEach(group.sessions) { session in
-                        row(for: session)
-                        .tag(session.id)
-                        .listRowSeparator(.hidden)
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(store.ordered) { session in
+                    row(for: session)
                         .contextMenu {
                             Button("Rename…") { startRenaming(session) }
                             Button("Delete…", role: .destructive) { deleting = session }
                         }
-                    }
                 }
             }
         }
-        .listSectionSeparator(.hidden)
-        .scrollContentBackground(.hidden)
-        .background(Palette.bg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             if store.sessions.isEmpty {
                 Kicker(text: "no sessions", size: 12, color: Palette.neutral(500))
             }
-        }
-        .onChange(of: selected) { _, id in
-            guard let id, let session = store.session(id) else { return }
-            open(session)
-        }
-        .onChange(of: pool?.current?.openSessionId) { _, id in
-            selected = id
         }
         .alert("Rename session", isPresented: renamingBinding) {
             TextField("Name", text: $draftName)
@@ -94,17 +82,22 @@ struct SidebarView: View {
         }
     }
 
-    private func row(for session: SavedSession) -> SessionRow {
+    private func row(for session: SavedSession) -> some View {
         SessionRow(
             session: session,
             number: numbers[session.id],
             branch: store.branch(for: session),
+            status: status(of: session),
             isMissing: store.isMissing(session.id),
-            isRunning: pool?.chat(for: session.id) != nil,
-            isBusy: pool?.isBusy(session.id) ?? false,
-            isWaiting: pool?.isWaiting(session.id) ?? false,
-            isDone: pool?.isFinishedUnseen(session.id) ?? false
+            isActive: pool?.current?.openSessionId == session.id
         )
+        .onTapGesture { open(session) }
+    }
+
+    private func status(of session: SavedSession) -> SessionStatus {
+        if pool?.isWaiting(session.id) == true { return .needsInput }
+        if pool?.isBusy(session.id) == true { return .working }
+        return .done
     }
 
     /// Only the first nine rows get a shortcut, matching ⌘1–⌘9.
@@ -159,59 +152,89 @@ private struct SessionRow: View {
     let session: SavedSession
     let number: Int?
     let branch: String?
+    let status: SessionStatus
     let isMissing: Bool
-    let isRunning: Bool
-    let isBusy: Bool
-    let isWaiting: Bool
-    let isDone: Bool
+    let isActive: Bool
+
+    @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            if isBusy {
-                ProgressView()
-                    .controlSize(.mini)
-                    .scaleEffect(0.6)
-                    .frame(width: 10)
-            } else {
-                Image(systemName: isRunning ? "circle.fill" : "bubble.left")
-                    .foregroundStyle(isRunning ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                    .font(.caption)
-            }
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(isActive ? Palette.accent : .clear)
+                .frame(width: Frame.activeMarker)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(session.title)
-                    .lineLimit(1)
-                if let branch {
-                    Label(branch, systemImage: "arrow.triangle.branch")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 0) {
+                StatusDot(status: status)
+                    .frame(width: 14, height: 22)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(session.title)
+                        .font(Typeface.heading(16))
+                        .foregroundStyle(Palette.text)
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(height: 22)
+
+                    if let branch {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.system(size: 11, weight: .light))
+                            Text(branch)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .font(Typeface.mono(10.5))
+                        .foregroundStyle(Palette.neutral(600))
+                    }
+                }
+
+                Spacer(minLength: Space.two)
+
+                if isMissing {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.ochre)
+                        .frame(height: 22)
+                        .help("This session's file is gone. Opening it starts an empty one.")
+                }
+
+                if let number {
+                    Text("⌘\(number)")
+                        .font(Typeface.mono(11))
+                        .foregroundStyle(Palette.neutral(500))
+                        .frame(height: 22)
                 }
             }
+            .padding(Space.three)
+        }
+        .contentShape(.rect)
+        .background(background)
+        .overlay { if isActive { CornerMarks() } }
+        .onHover { hovering = $0 }
+    }
 
-            Spacer()
+    private var background: Color {
+        isActive || hovering ? Palette.accent(100) : .clear
+    }
+}
 
-            if let number {
-                Text("⌘\(number)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-
-            if isWaiting {
-                WaitingDot()
-            } else if isDone {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.caption)
-                    .help("Finished while you were elsewhere")
-            }
-
-            if isMissing {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .help("This session's file is gone. Opening it starts an empty one.")
+/// Three states is not obvious from three coloured squares, so the rail says which
+/// is which.
+private struct Legend: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.one) {
+            ForEach(SessionStatus.all, id: \.self) { status in
+                HStack(spacing: Space.two) {
+                    StatusDot(status: status, size: 7)
+                    Text(status.label)
+                        .font(Typeface.body(11))
+                        .foregroundStyle(Palette.neutral(700))
+                }
             }
         }
-        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Space.four)
+        .padding(.vertical, Space.three)
     }
 }
