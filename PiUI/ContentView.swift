@@ -47,6 +47,7 @@ struct ContentView: View {
             AskSheet(
                 ask: ask,
                 confirm: { pool?.current?.answer(ask, confirmed: $0) },
+                remember: { pool?.current?.alwaysAllow(ask) },
                 submit: { pool?.current?.answer(ask, value: $0) },
                 cancel: { pool?.current?.dismiss(ask) }
             )

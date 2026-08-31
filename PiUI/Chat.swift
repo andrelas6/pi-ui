@@ -14,6 +14,7 @@ final class Chat {
     private(set) var followUps: [String] = []
     private(set) var recovered: [String] = []
     private(set) var typingRequests = 0
+    private(set) var alwaysAllowed: Set<String> = []
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
 
@@ -71,6 +72,7 @@ final class Chat {
         ask = nil
         steering = []
         followUps = []
+        alwaysAllowed = []
         messages = []
 
         Task {
@@ -286,10 +288,24 @@ final class Chat {
         // Anything else is fire-and-forget and has no home in this UI yet.
         default:
             guard let waiting = Ask(event) else { return }
+            if waiting.method == .confirm, alwaysAllowed.contains(waiting.title) {
+                answer(waiting, confirmed: true)
+                return
+            }
             ask = waiting
         }
     }
 
+    /// Remembered for this session only. A standing yes that outlived the window
+    /// would be a permission you never granted.
+    func alwaysAllow(_ ask: Ask) {
+        alwaysAllowed.insert(ask.title)
+        answer(ask, confirmed: true)
+    }
+
+    func forgetAllowances() {
+        alwaysAllowed = []
+    }
 
     func answer(_ ask: Ask, confirmed: Bool) {
         reply(["id": .string(ask.id), "confirmed": .bool(confirmed)])

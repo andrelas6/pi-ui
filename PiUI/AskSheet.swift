@@ -3,6 +3,7 @@ import SwiftUI
 struct AskSheet: View {
     let ask: Ask
     let confirm: (Bool) -> Void
+    let remember: () -> Void
     let submit: (String) -> Void
     let cancel: () -> Void
 
@@ -40,7 +41,7 @@ struct AskSheet: View {
             HStack(spacing: 7) {
                 Image(systemName: "hand.raised.fill")
                     .foregroundStyle(.orange)
-                Text(ask.title)
+                Text(ask.method == .confirm ? "Allow \(ask.title)?" : ask.title)
                     .font(.headline)
             }
             if !ask.message.isEmpty {
@@ -70,6 +71,8 @@ struct AskSheet: View {
             case .confirm:
                 Button("Deny", role: .destructive) { confirm(false) }
                     .keyboardShortcut(.cancelAction)
+                Button("Always in this session", action: remember)
+                    .help("Stop asking for \(ask.title) until this session closes")
                 Button("Allow") { confirm(true) }
                     .keyboardShortcut(.defaultAction)
             case .select:
