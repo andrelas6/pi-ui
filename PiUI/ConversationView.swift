@@ -4,6 +4,7 @@ struct ConversationView: View {
     let chat: Chat
     @State private var draft = ""
     @FocusState private var typing: Bool
+    @State private var pickingModel = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,6 +29,41 @@ struct ConversationView: View {
             }
         }
         .navigationTitle(chat.folder?.lastPathComponent ?? "pi")
+        .toolbar {
+            ToolbarItemGroup {
+                if let stats = chat.stats {
+                    StatsReadout(stats: stats)
+                }
+
+                if !chat.thinkingLevels.isEmpty {
+                    Menu(chat.thinkingLevel.isEmpty ? "thinking" : chat.thinkingLevel) {
+                        ForEach(chat.thinkingLevels, id: \.self) { level in
+                            Button(level) {
+                                Task { await chat.setThinking(level) }
+                            }
+                        }
+                    }
+                    .help("How hard the model thinks before answering")
+                }
+
+                Button(chat.modelName.isEmpty ? "Model" : chat.modelName) {
+                    pickingModel = true
+                    Task { await chat.loadModels() }
+                }
+                .help("Switch the model for this session")
+            }
+        }
+        .sheet(isPresented: $pickingModel) {
+            ModelPicker(
+                models: chat.models,
+                current: chat.modelName,
+                choose: { model in
+                    pickingModel = false
+                    Task { await chat.use(model) }
+                },
+                cancel: { pickingModel = false }
+            )
+        }
         .onChange(of: chat.typingRequests) { _, _ in
             // A hop, so the box exists before the cursor is sent to it.
             DispatchQueue.main.async { typing = true }
@@ -97,6 +133,27 @@ struct ConversationView: View {
     private func send() {
         chat.send(draft)
         draft = ""
+    }
+}
+
+private struct StatsReadout: View {
+    let stats: SessionStats
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let context = stats.contextText {
+                Text(context)
+                    .foregroundStyle(stats.isTight ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                    .help("Context window used")
+            }
+            if !stats.costText.isEmpty {
+                Text(stats.costText)
+                    .foregroundStyle(.secondary)
+                    .help("Spent on this session")
+            }
+        }
+        .font(.caption)
+        .monospacedDigit()
     }
 }
 

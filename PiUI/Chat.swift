@@ -15,6 +15,11 @@ final class Chat {
     private(set) var recovered: [String] = []
     private(set) var typingRequests = 0
     private(set) var alwaysAllowed: Set<String> = []
+    private(set) var models: [ModelChoice] = []
+    private(set) var modelName = ""
+    private(set) var thinkingLevels: [String] = []
+    private(set) var thinkingLevel = ""
+    private(set) var stats: SessionStats?
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
 
@@ -98,7 +103,11 @@ final class Chat {
         store.remember(id: id, folder: folder, file: file)
         store.markRunning(id)
         store.refreshBranches()
+        modelName = state["data"]?["model"]?["name"]?.string ?? ""
+        thinkingLevel = state["data"]?["thinkingLevel"]?.string ?? ""
         try await loadHistory(session)
+        await refreshThinkingLevels()
+        await refreshStats()
     }
 
     /// Reopening a session shows what was said before, not an empty pane.
@@ -275,6 +284,7 @@ final class Chat {
             followUps = []
             store.reconcile()
             store.refreshBranches()
+            Task { await refreshStats() }
 
         default:
             break
@@ -333,6 +343,50 @@ final class Chat {
             return []
         }
         return ["-e", gate.path]
+    }
+
+    func loadModels() async {
+        guard models.isEmpty, let session else { return }
+        guard let response = try? await session.send("get_available_models") else { return }
+        models = ModelChoice.all(from: response)
+    }
+
+    func use(_ choice: ModelChoice) async {
+        guard let session else { return }
+        guard let response = try? await session.send(
+            "set_model",
+            fields: ["provider": .string(choice.provider), "modelId": .string(choice.modelId)]
+        ) else { return }
+
+        modelName = response["data"]?["name"]?.string ?? choice.name
+        // Levels belong to the model, so a switch can leave the old one unavailable.
+        await refreshThinkingLevels()
+        await refreshStats()
+    }
+
+    /// pi answers success for a level the model does not offer and then ignores it,
+    /// so only ever send one from this list.
+    func setThinking(_ level: String) async {
+        guard let session, thinkingLevels.contains(level) else { return }
+        guard (try? await session.send("set_thinking_level", fields: ["level": .string(level)])) != nil
+        else { return }
+        thinkingLevel = level
+    }
+
+    private func refreshThinkingLevels() async {
+        guard let session else { return }
+        guard let response = try? await session.send("get_available_thinking_levels") else { return }
+        thinkingLevels = response["data"]?["levels"]?.array?.compactMap(\.string) ?? []
+
+        if !thinkingLevels.contains(thinkingLevel) {
+            thinkingLevel = thinkingLevels.first ?? ""
+        }
+    }
+
+    private func refreshStats() async {
+        guard let session else { return }
+        guard let response = try? await session.send("get_session_stats") else { return }
+        stats = SessionStats(response)
     }
 
     private func toolIndex(_ event: JSONValue) -> Int? {
