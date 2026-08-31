@@ -14,6 +14,8 @@ enum Stylesheet {
         lines.append("  --color-divider: color-mix(in srgb, \(Palette.textHex) 16%, transparent);")
         lines.append("  --color-ochre: \(Palette.ochreHex);")
         lines.append("  --color-ochre-text: \(Palette.ochreTextHex);")
+        lines.append("  --color-removed: \(Palette.removedHex);")
+        lines.append("  --color-removed-text: \(Palette.removedTextHex);")
 
         for (index, hex) in Palette.neutralHexes.enumerated() {
             lines.append("  --color-neutral-\((index + 1) * 100): \(hex);")

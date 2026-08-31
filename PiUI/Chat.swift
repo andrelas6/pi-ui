@@ -221,7 +221,12 @@ final class Chat {
             guard let update = event["assistantMessageEvent"] else { return }
             switch update["type"]?.string {
             case "text_start":
-                let message = ChatMessage(kind: .assistant, text: "", done: false)
+                let message = ChatMessage(
+                    kind: .assistant,
+                    text: "",
+                    done: false,
+                    kicker: Kickers.agent(model: modelName)
+                )
                 streamingId = message.id
                 messages.append(message)
             case "text_delta":
@@ -244,6 +249,7 @@ final class Chat {
                 arguments: event["args"]?.prettyText ?? "",
                 output: "",
                 diff: "",
+                result: "",
                 failed: false
             )
             messages.append(ChatMessage(id: id, kind: .tool, text: "", done: false, tool: call))
@@ -257,7 +263,9 @@ final class Chat {
             guard let index = toolIndex(event) else { return }
             messages[index].tool?.output = event["result"]?.contentText ?? ""
             // pi computes the diff itself, so there is no need to reinvent one.
-            messages[index].tool?.diff = event["result"]?["details"]?["diff"]?.string ?? ""
+            let diff = event["result"]?["details"]?["diff"]?.string ?? ""
+            messages[index].tool?.diff = diff
+            messages[index].tool?.result = DiffSummary.text(diff)
             messages[index].tool?.failed = event["isError"]?.bool ?? false
             messages[index].done = true
 
@@ -274,7 +282,10 @@ final class Chat {
             guard let message = event["message"], message["role"]?.string == "user" else { return }
             let text = History.plainText(message["content"])
             guard !text.isEmpty else { return }
-            messages.append(ChatMessage(kind: .user, text: text, done: true))
+            let at = Kickers.moment(fromMilliseconds: message["timestamp"]?.number)
+            messages.append(
+                ChatMessage(kind: .user, text: text, done: true, kicker: Kickers.user(at: at))
+            )
 
         case "queue_update":
             steering = event["steering"]?.array?.compactMap(\.string) ?? []

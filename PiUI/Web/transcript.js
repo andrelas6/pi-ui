@@ -50,13 +50,17 @@
         card.className = "card";
         card.open = true;
         card.innerHTML =
-            '<summary>' +
+            '<summary class="call">' +
             '<span class="name"></span>' +
             '<span class="preview"></span>' +
+            '<span class="result"></span>' +
             '<span class="state"></span>' +
             "</summary>" +
             '<pre class="args"></pre>' +
-            '<pre class="diff"></pre>' +
+            '<div class="diff">' +
+            '<i class="corner tl"></i><i class="corner tr"></i>' +
+            '<i class="corner bl"></i><i class="corner br"></i>' +
+            '<div class="strip"></div><div class="lines"></div></div>' +
             '<pre class="out"></pre>';
         node.appendChild(card);
         return card;
@@ -68,17 +72,20 @@
 
         card.querySelector(".name").textContent = tool.name || "";
         card.querySelector(".preview").textContent = tool.preview || "";
+        card.querySelector(".result").textContent = tool.result || "";
         // A diff says everything the raw edit arguments would, and says it better.
         var diff = card.querySelector(".diff");
         var args = card.querySelector(".args");
         if (tool.diff) {
-            diff.innerHTML = "";
+            diff.querySelector(".strip").textContent = tool.preview || "";
+            var lines = diff.querySelector(".lines");
+            lines.innerHTML = "";
             tool.diff.split("\n").forEach(function (line) {
                 var row = document.createElement("span");
                 var mark = line.charAt(0);
                 row.className = "row " + (mark === "+" ? "add" : mark === "-" ? "del" : "same");
                 row.textContent = line;
-                diff.appendChild(row);
+                lines.appendChild(row);
             });
             diff.style.display = "";
             args.style.display = "none";
@@ -109,6 +116,28 @@
 
     // Streaming text stays plain so half a fence never renders as a broken block.
     // It becomes markdown once the message is complete.
+    function kicker(node, message) {
+        var label = node.querySelector(".kicker");
+        if (!label) {
+            label = document.createElement("div");
+            label.className = "kicker";
+            node.appendChild(label);
+        }
+        label.textContent = message.kicker || "";
+        label.style.display = message.kicker ? "" : "none";
+        return label;
+    }
+
+    function bodyOf(node, className) {
+        var body = node.querySelector("." + className);
+        if (!body) {
+            body = document.createElement("div");
+            body.className = className;
+            node.appendChild(body);
+        }
+        return body;
+    }
+
     function paint(node, message) {
         if (message.kind === "tool") {
             node.className = "msg tool";
@@ -116,19 +145,26 @@
             return;
         }
 
-        var streaming = message.kind === "assistant" && !message.done;
-        node.className = "msg " + message.kind + (streaming ? " streaming" : "");
+        node.className = "msg " + (message.kind === "user" ? "user" : "agent");
+        kicker(node, message);
 
-        if (message.kind === "assistant" && message.done) {
-            node.innerHTML = marked.parse(message.text || "");
-            paintCode(node);
+        if (message.kind === "user") {
+            bodyOf(node, "body").textContent = message.text || "";
             return;
         }
 
-        node.textContent = message.text || "";
-        if (streaming) {
-            node.appendChild(document.createElement("span")).className = "cursor";
+        var prose = bodyOf(node, "prose");
+        var streaming = !message.done;
+        prose.className = "prose" + (streaming ? " streaming" : "");
+
+        if (!streaming) {
+            prose.innerHTML = marked.parse(message.text || "");
+            paintCode(prose);
+            return;
         }
+
+        prose.textContent = message.text || "";
+        prose.appendChild(document.createElement("span")).className = "cursor";
     }
 
     function signature(message) {
@@ -140,11 +176,12 @@
                 (tool.arguments || "").length,
                 (tool.output || "").length,
                 (tool.diff || "").length,
+                tool.result,
                 tool.failed,
                 message.done
             ].join("|");
         }
-        return message.text.length + "|" + message.done;
+        return [message.text.length, message.done, message.kicker].join("|");
     }
 
     window.piui = {

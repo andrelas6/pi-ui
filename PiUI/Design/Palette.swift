@@ -13,6 +13,11 @@ enum Palette {
     static let ochreHex = "#b07d2e"
     static let ochreTextHex = "#7d5719"
 
+    /// Removed lines in a diff. A second step outside the palette, kept dusty rather
+    /// than a live red so it reads as a mark on the page, not an alarm.
+    static let removedHex = "#f5dbd6"
+    static let removedTextHex = "#5f2d27"
+
     static let neutralHexes = [
         "#f5f5f8", "#e7e7ea", "#d4d4d7", "#b7b7ba", "#98989b",
         "#7a7a7d", "#5d5d60", "#424244", "#2b2b2d",
@@ -29,6 +34,8 @@ enum Palette {
     static var accent: Color { Color(hex: accentHex) }
     static var ochre: Color { Color(hex: ochreHex) }
     static var ochreText: Color { Color(hex: ochreTextHex) }
+    static var removed: Color { Color(hex: removedHex) }
+    static var removedText: Color { Color(hex: removedTextHex) }
 
     /// The divider is the text colour at 16%, not its own hex.
     static var divider: Color { text.opacity(0.16) }

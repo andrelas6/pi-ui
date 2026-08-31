@@ -31,6 +31,14 @@ struct DesignTokenTests {
         #expect(Palette.accentHexes.contains(Palette.ochreHex) == false)
     }
 
+    /// Two colours sit outside the steel ramps, and both are deliberate.
+    @Test func keepsTheRemovedColourOutsideTheRamps() {
+        #expect(Palette.removedHex == "#f5dbd6")
+        #expect(Palette.removedTextHex == "#5f2d27")
+        #expect(Palette.neutralHexes.contains(Palette.removedHex) == false)
+        #expect(Palette.accentHexes.contains(Palette.removedHex) == false)
+    }
+
     @Test func usesTheDensityScale() {
         #expect(Space.all == [3.4, 6.8, 10.2, 13.6, 20.4, 27.2])
     }
@@ -64,6 +72,12 @@ struct StylesheetTests {
         #expect(css.contains("--color-bg: \(Palette.bgHex);"))
         #expect(css.contains("--color-accent: \(Palette.accentHex);"))
         #expect(css.contains("--color-ochre: \(Palette.ochreHex);"))
+    }
+
+    @Test func carriesBothOffPaletteColours() {
+        #expect(css.contains("--color-ochre: \(Palette.ochreHex);"))
+        #expect(css.contains("--color-removed: \(Palette.removedHex);"))
+        #expect(css.contains("--color-removed-text: \(Palette.removedTextHex);"))
     }
 
     @Test func writesBothRampsInFull() {

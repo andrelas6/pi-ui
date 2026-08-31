@@ -13,6 +13,7 @@ struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
         var arguments: String
         var output: String
         var diff: String
+        var result: String
         var failed: Bool
 
         /// The one detail worth showing on the collapsed card, per tool.
@@ -30,13 +31,22 @@ struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
     var kind: Kind
     var text: String
     var done: Bool
+    var kicker: String
     var tool: ToolCall?
 
-    init(id: String = UUID().uuidString, kind: Kind, text: String, done: Bool, tool: ToolCall? = nil) {
+    init(
+        id: String = UUID().uuidString,
+        kind: Kind,
+        text: String,
+        done: Bool,
+        kicker: String = "",
+        tool: ToolCall? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.text = text
         self.done = done
+        self.kicker = kicker
         self.tool = tool
     }
 }
