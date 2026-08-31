@@ -35,6 +35,11 @@ final class Chat {
 
     var isOpen: Bool { session != nil }
 
+    var branch: String? {
+        guard let folder else { return nil }
+        return store.branches[folder.path]
+    }
+
     func markOpenForTesting(_ id: String) {
         openSessionId = id
     }
