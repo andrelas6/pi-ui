@@ -96,6 +96,39 @@ struct ChatPoolTests {
         #expect(pool.current == nil)
     }
 
+    @Test func flagsASessionThatFinishedWhileYouWereElsewhere() {
+        let (pool, store) = newPool()
+        let background = attach("one", to: pool, store: store)
+        _ = attach("two", to: pool, store: store)
+        pool.show(saved("two", in: store))
+
+        background.onSettled?()
+
+        #expect(pool.isFinishedUnseen("one") == true)
+        #expect(pool.isFinishedUnseen("two") == false)
+    }
+
+    @Test func doesNotFlagTheSessionYouAreWatching() {
+        let (pool, store) = newPool()
+        let watched = attach("one", to: pool, store: store)
+        pool.show(saved("one", in: store))
+
+        watched.onSettled?()
+
+        #expect(pool.isFinishedUnseen("one") == false)
+    }
+
+    @Test func clearsTheFlagOnceYouLook() {
+        let (pool, store) = newPool()
+        let background = attach("one", to: pool, store: store)
+        _ = attach("two", to: pool, store: store)
+        pool.show(saved("two", in: store))
+        background.onSettled?()
+
+        pool.show(saved("one", in: store))
+        #expect(pool.isFinishedUnseen("one") == false)
+    }
+
     /// A session waiting on an answer while you look elsewhere is the case the
     /// pulsing dot exists for, and it was unreachable with a single chat.
     @Test func noticesASessionWaitingInTheBackground() throws {
