@@ -20,6 +20,7 @@ final class Chat {
     private(set) var thinkingLevels: [String] = []
     private(set) var thinkingLevel = ""
     private(set) var stats: SessionStats?
+    var onSettled: (@MainActor () -> Void)?
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
 
@@ -284,6 +285,7 @@ final class Chat {
             followUps = []
             store.reconcile()
             store.refreshBranches()
+            onSettled?()
             Task { await refreshStats() }
 
         default:

@@ -85,7 +85,8 @@ struct SidebarView: View {
             isMissing: store.isMissing(session.id),
             isRunning: pool?.chat(for: session.id) != nil,
             isBusy: pool?.isBusy(session.id) ?? false,
-            isWaiting: pool?.isWaiting(session.id) ?? false
+            isWaiting: pool?.isWaiting(session.id) ?? false,
+            isDone: pool?.isFinishedUnseen(session.id) ?? false
         )
     }
 
@@ -145,6 +146,7 @@ private struct SessionRow: View {
     let isRunning: Bool
     let isBusy: Bool
     let isWaiting: Bool
+    let isDone: Bool
 
     var body: some View {
         HStack(spacing: 6) {
@@ -180,6 +182,11 @@ private struct SessionRow: View {
 
             if isWaiting {
                 WaitingDot()
+            } else if isDone {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+                    .help("Finished while you were elsewhere")
             }
 
             if isMissing {

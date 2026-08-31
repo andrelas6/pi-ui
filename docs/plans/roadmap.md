@@ -264,7 +264,35 @@ window would be a permission nobody granted.
 
 ---
 
-## v5 — Everything pi exposes that we haven't used yet
+## v5 — Model control and what a session is costing
+
+### S18. Model and thinking picker
+**Deliverable:** A searchable model list and a thinking-level menu per session. Until now
+the only way to change model was editing `~/.pi/agent/settings.json` and restarting.
+
+Two things the protocol makes easy to get wrong: there are ~350 models, so the list has to
+be searchable rather than a menu; and thinking levels belong to the **model**, so switching
+model can leave the current level unavailable. pi answers `success` for a level the model
+does not offer and then ignores it, so only offer what it reports.
+
+**Done when:** switching to a model with no reasoning support leaves the level menu honest.
+
+### S19. Say when a session finishes
+**Deliverable:** A session that settles while you are looking elsewhere marks itself in the
+sidebar and badges the dock. The app bounces if it is in the background.
+
+**Done when:** starting a long turn, switching away, and being told when it lands.
+
+### S20. Context and cost readout
+**Deliverable:** Context used and money spent in the conversation toolbar, refreshed when a
+turn settles. `contextUsage` is absent with no model and null right after compaction, so
+neither can be assumed present.
+
+**Done when:** a long session shows its context climbing and warns past 75%.
+
+---
+
+## v6 — Everything pi exposes that we haven't used yet
 
 Grouped by what pi gives us, so you can pick by appetite rather than by category.
 
