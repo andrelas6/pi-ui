@@ -11,6 +11,13 @@ struct FocusTests {
         return Chat(store: SessionStore(file: index))
     }
 
+    private func newPool() -> (ChatPool, SessionStore) {
+        let index = FileManager.default.temporaryDirectory
+            .appending(path: "pi-ui-focus-pool-\(UUID().uuidString).json")
+        let store = SessionStore(file: index)
+        return (ChatPool(store: store), store)
+    }
+
     @Test func startsWithNoRequest() {
         #expect(newChat().typingRequests == 0)
     }
@@ -25,39 +32,33 @@ struct FocusTests {
         #expect(chat.typingRequests == 2)
     }
 
-    /// Jumping to the session already open still hands over the cursor, even though
-    /// there is nothing to load.
-    @Test func asksWhenJumpingToTheOpenSession() {
-        let chat = newChat()
-        let saved = SavedSession(
-            id: "open-one",
-            name: nil,
-            folder: URL(fileURLWithPath: "/tmp/a"),
-            file: nil,
-            everSaved: false,
-            createdAt: .now,
-            lastOpenedAt: .now
-        )
-        chat.pretendOpenForTesting(saved.id)
+    /// Jumping to a session already on screen still hands over the cursor, which is
+    /// exactly when someone is reading it and wants to reply.
+    @Test func asksWhenShowingTheSessionAlreadyOnScreen() {
+        let (pool, store) = newPool()
+        store.remember(id: "one", folder: URL(fileURLWithPath: "/tmp/a"), file: nil)
+        let saved = try? #require(store.session("one"))
+        guard let saved else { return }
 
-        chat.reopen(saved, thenType: true)
+        let chat = Chat(store: store)
+        chat.markOpenForTesting(saved.id)
+        pool.adoptForTesting(chat)
+
+        pool.show(saved, thenType: true)
         #expect(chat.typingRequests == 1)
+        #expect(pool.current === chat)
     }
 
     @Test func staysQuietWhenNotAskedTo() {
-        let chat = newChat()
-        let saved = SavedSession(
-            id: "open-one",
-            name: nil,
-            folder: URL(fileURLWithPath: "/tmp/a"),
-            file: nil,
-            everSaved: false,
-            createdAt: .now,
-            lastOpenedAt: .now
-        )
-        chat.pretendOpenForTesting(saved.id)
+        let (pool, store) = newPool()
+        store.remember(id: "one", folder: URL(fileURLWithPath: "/tmp/a"), file: nil)
+        guard let saved = store.session("one") else { return }
 
-        chat.reopen(saved)
+        let chat = Chat(store: store)
+        chat.markOpenForTesting(saved.id)
+        pool.adoptForTesting(chat)
+
+        pool.show(saved)
         #expect(chat.typingRequests == 0)
     }
 }

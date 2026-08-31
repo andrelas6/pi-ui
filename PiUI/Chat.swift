@@ -28,16 +28,7 @@ final class Chat {
 
     var isOpen: Bool { session != nil }
 
-    func reopen(_ saved: SavedSession, thenType: Bool = false) {
-        guard saved.id != openSessionId else {
-            // Already the open one, so there is nothing to load — just take the cursor.
-            if thenType { askToType() }
-            return
-        }
-        open(saved.folder, sessionId: saved.id, thenType: thenType)
-    }
-
-    func pretendOpenForTesting(_ id: String) {
+    func markOpenForTesting(_ id: String) {
         openSessionId = id
     }
 
@@ -298,6 +289,7 @@ final class Chat {
             ask = waiting
         }
     }
+
 
     func answer(_ ask: Ask, confirmed: Bool) {
         reply(["id": .string(ask.id), "confirmed": .bool(confirmed)])
