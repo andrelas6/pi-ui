@@ -240,7 +240,31 @@ after the agent finishes a turn.
 
 ---
 
-## v4 — Everything pi exposes that we haven't used yet
+## v4 — Sessions that keep working
+
+### S16. Sessions keep running in the background
+**Deliverable:** One `Chat` per session instead of one for the app. Switching changes which
+session is shown, not which exists. The sidebar marks a session busy while its agent works.
+
+Before this, `open()` called `close()`, so switching sessions terminated the running pi
+process and abandoned the turn. It also made S8's pulsing dot decorative: a request could
+only ever belong to the session already on screen.
+
+**Done when:** starting a long turn, switching away, and coming back shows it finished.
+
+### S17. Remember a permission answer
+**Deliverable:** The approval sheet gains "Always in this session". Later requests for that
+tool are answered without a dialog.
+
+Asking every single time is what makes people stop reading the question, which is worse
+than not asking. Memory lasts for the session only — a standing yes that outlived the
+window would be a permission nobody granted.
+
+**Done when:** allowing bash once stops the prompts for bash, and edit still asks.
+
+---
+
+## v5 — Everything pi exposes that we haven't used yet
 
 Grouped by what pi gives us, so you can pick by appetite rather than by category.
 

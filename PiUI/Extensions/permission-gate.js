@@ -19,7 +19,9 @@ export default function (pi) {
             return { block: true, reason: "No UI available to approve this" };
         }
 
-        const allowed = await ctx.ui.confirm(`Allow ${event.toolName}?`, describe(event));
+        // The title is the bare tool name so the app can match a remembered answer
+        // against it. The app writes the question the reader sees.
+        const allowed = await ctx.ui.confirm(event.toolName, describe(event));
         if (!allowed) {
             return { block: true, reason: "Denied by the user" };
         }

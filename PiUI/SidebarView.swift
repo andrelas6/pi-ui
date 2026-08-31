@@ -3,7 +3,7 @@ import SwiftUI
 
 struct SidebarView: View {
     let store: SessionStore
-    let chat: Chat?
+    let pool: ChatPool?
     let open: (SavedSession) -> Void
     let start: (URL) -> Void
 
@@ -18,14 +18,7 @@ struct SidebarView: View {
             ForEach(store.groups) { group in
                 Section(group.title) {
                     ForEach(group.sessions) { session in
-                        SessionRow(
-                            session: session,
-                            number: numbers[session.id],
-                            branch: store.branch(for: session),
-                            isMissing: store.isMissing(session.id),
-                            isRunning: store.isRunning(session.id),
-                            isWaiting: chat?.ask != nil && chat?.openSessionId == session.id
-                        )
+                        row(for: session)
                         .tag(session.id)
                         .contextMenu {
                             Button("Rename…") { startRenaming(session) }
@@ -57,7 +50,7 @@ struct SidebarView: View {
             guard let id, let session = store.session(id) else { return }
             open(session)
         }
-        .onChange(of: chat?.openSessionId) { _, id in
+        .onChange(of: pool?.current?.openSessionId) { _, id in
             selected = id
         }
         .alert("Rename session", isPresented: renamingBinding) {
@@ -82,6 +75,18 @@ struct SidebarView: View {
         } message: {
             Text(deleteFailed ?? "")
         }
+    }
+
+    private func row(for session: SavedSession) -> SessionRow {
+        SessionRow(
+            session: session,
+            number: numbers[session.id],
+            branch: store.branch(for: session),
+            isMissing: store.isMissing(session.id),
+            isRunning: pool?.chat(for: session.id) != nil,
+            isBusy: pool?.isBusy(session.id) ?? false,
+            isWaiting: pool?.isWaiting(session.id) ?? false
+        )
     }
 
     /// Only the first nine rows get a shortcut, matching ⌘1–⌘9.
@@ -110,13 +115,14 @@ struct SidebarView: View {
 
     private func commitRename() {
         guard let session = renaming else { return }
-        chat?.rename(session.id, to: draftName)
+        pool?.chat(for: session.id)?.rename(session.id, to: draftName)
+        store.rename(session.id, to: draftName)
         renaming = nil
     }
 
     private func commitDelete() {
         guard let session = deleting else { return }
-        chat?.closeIfOpen(session.id)
+        pool?.drop(session.id)
         do {
             try store.trash(session.id)
         } catch {
@@ -137,13 +143,21 @@ private struct SessionRow: View {
     let branch: String?
     let isMissing: Bool
     let isRunning: Bool
+    let isBusy: Bool
     let isWaiting: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: isRunning ? "circle.fill" : "bubble.left")
-                .foregroundStyle(isRunning ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                .font(.caption)
+            if isBusy {
+                ProgressView()
+                    .controlSize(.mini)
+                    .scaleEffect(0.6)
+                    .frame(width: 10)
+            } else {
+                Image(systemName: isRunning ? "circle.fill" : "bubble.left")
+                    .foregroundStyle(isRunning ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                    .font(.caption)
+            }
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(session.title)
