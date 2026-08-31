@@ -20,6 +20,7 @@ final class Chat {
     private(set) var thinkingLevels: [String] = []
     private(set) var thinkingLevel = ""
     private(set) var stats: SessionStats?
+    private(set) var files = WorkingCopy()
     var onSettled: (@MainActor () -> Void)?
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
@@ -34,6 +35,13 @@ final class Chat {
     }
 
     var isOpen: Bool { session != nil }
+
+    /// Reading a working copy shells out to git three times, so it happens when a
+    /// session opens and when a turn lands, not on every keystroke.
+    func refreshFiles() {
+        guard let folder else { return }
+        files = WorkingCopy.read(folder)
+    }
 
     var branch: String? {
         guard let folder else { return nil }
@@ -109,6 +117,7 @@ final class Chat {
         store.remember(id: id, folder: folder, file: file)
         store.markRunning(id)
         store.refreshBranches()
+        refreshFiles()
         modelName = state["data"]?["model"]?["name"]?.string ?? ""
         thinkingLevel = state["data"]?["thinkingLevel"]?.string ?? ""
         try await loadHistory(session)
@@ -302,6 +311,7 @@ final class Chat {
             followUps = []
             store.reconcile()
             store.refreshBranches()
+            refreshFiles()
             onSettled?()
             Task { await refreshStats() }
 

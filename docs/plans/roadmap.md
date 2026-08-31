@@ -380,9 +380,9 @@ rail dot and the dock badge are what make that safe, and both already exist.
 
 ---
 
-## v7 — The file tree pane
+## v7 — The file tree pane ✅
 
-### S27. Working-copy tree
+### S27. Working-copy tree ✅
 **Deliverable:** The third pane at 264px — directory tree for the session's folder, mono
 12px rows, depth indent, expand/collapse, `M`/`A` change badges from `git status
 --porcelain`, a "3 changed" count in the header and `+41 −7` in the footer.

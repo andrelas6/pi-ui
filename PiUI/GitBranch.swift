@@ -4,24 +4,7 @@ import Foundation
 /// short command, and a dependency would cost more than it saves.
 enum GitBranch {
     static func name(in folder: URL) -> String? {
-        guard FileManager.default.fileExists(atPath: folder.appending(path: ".git").path)
-        else { return nil }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["git", "-C", folder.path, "rev-parse", "--abbrev-ref", "HEAD"]
-        process.environment = ProcessInfo.processInfo.environment
-
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-
-        guard (try? process.run()) != nil else { return nil }
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-
-        return clean(String(decoding: data, as: UTF8.self))
+        clean(Git.run(["rev-parse", "--abbrev-ref", "HEAD"], in: folder) ?? "")
     }
 
     static func clean(_ raw: String) -> String? {

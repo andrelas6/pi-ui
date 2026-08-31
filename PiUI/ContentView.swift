@@ -25,6 +25,12 @@ struct ContentView: View {
 
                 conversation
                     .frame(minWidth: Frame.mainMinimum, maxWidth: .infinity)
+
+                if let chat = pool?.current {
+                    Hairline(vertical: true)
+                    FileTreeView(copy: chat.files, branch: chat.branch)
+                        .frame(width: Frame.fileTree)
+                }
             }
             .frame(maxHeight: .infinity)
         }

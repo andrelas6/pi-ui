@@ -93,5 +93,12 @@ Working through v1. See [docs/plans/roadmap.md](docs/plans/roadmap.md) for the f
 - **S10–S12** — ⌃T for a new session, tool cards open by default, ⌘1–⌘9 to jump ✅
 - **S13–S15** — syntax highlighting, diffs on edits, git branch in the sidebar ✅
 
-Next is v4: the wider set of things pi exposes — session tree navigation, model and
-thinking controls, compaction, a built-in shell, and more.
+**v4–v7 are complete too.**
+
+- **S16–S17** — sessions keep running in the background; permission answers remembered ✅
+- **S18–S20** — model and thinking pickers, finish notices, context and cost ✅
+- **S21–S26** — the UI rebuilt on the Industry design from `design-docs/` ✅
+- **S27** — the working-copy file tree ✅
+
+Next is v8: the wider set of things pi exposes — session tree navigation, forking,
+compaction, a built-in shell, images, and a command palette.
