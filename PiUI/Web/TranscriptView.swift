@@ -34,6 +34,7 @@ struct TranscriptView: NSViewRepresentable {
         return """
         <!doctype html>
         <html><head><meta charset="utf-8">
+        <style>\(Stylesheet.rootVariables)</style>
         <style>\(css)</style>
         </head><body><div id="log"></div>
         <script>\(marked)</script>

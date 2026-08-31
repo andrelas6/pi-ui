@@ -292,7 +292,106 @@ neither can be assumed present.
 
 ---
 
-## v6 — Everything pi exposes that we haven't used yet
+## v6 — The Industry look
+
+Rebuilding the UI against `design-docs/design_handoff_agent_workspace_v6/`. Native SwiftUI
+throughout; the design is a reference, not code to import.
+
+**Three decisions already taken:** the app stays **PiUI** (the design's "FOREMAN" is brief
+placeholder, held in one constant); the **file tree pane is deferred to v7**, so the
+conversation spans its space until then; and **Barlow ships in the bundle** — four faces
+(Barlow 400/500, Barlow Condensed 600/700), registered at launch, so the type matches
+exactly rather than falling back to a system face.
+
+**Land it on one branch.** Each subtask leaves the app working, but a half-restyled app —
+new rail against an old transcript — looks broken. One `v6-industry` branch, a commit per
+subtask, a single PR at the end.
+
+### S21. One set of tokens, two languages
+**Deliverable:** Colours, spacing, type and shadows defined once in Swift, with the CSS
+`:root` block generated from the same values and injected into the transcript page.
+
+The chrome is SwiftUI and the transcript is CSS. Two hand-maintained copies of a palette
+drift, and the drift shows up as a sidebar that is a shade off the message log.
+
+**Done when:** changing one Swift token moves both the rail and the transcript.
+
+### S22. Window shell and title bar
+**Deliverable:** Native title bar hidden, replaced by the design's 38px bar — `PIUI`, the
+current path, and a right-aligned meta group counting sessions and any needing input.
+Ground `#f2f2f3`, square corners throughout, 1px dividers between panes, sessions rail
+fixed at 272px.
+
+`NavigationSplitView` goes: the design's panes are fixed, not resizable, and the split view
+brings its own chrome and collapse behaviour that fights it.
+
+**Done when:** the shell measures as specified and nothing is rounded.
+
+### S23. Sessions rail
+**Deliverable:** The rail as drawn — kicker header, rows with a 2px accent left border and
+corner marks when active, an 8×8 status dot, folder name in condensed 600, branch line in
+mono with a git-branch icon, and the ⌘N hint as plain mono text.
+
+The design carries three states in the dot: done (grey, still), working (accent, 2s pulse),
+needs input (ochre `#b07d2e`, 1.6s pulse). We have five signals — those three plus *missing*
+and *finished-unseen*. Mapping: the dot keeps the design's three, `missing` keeps its
+warning glyph, and finished-unseen stays with the dock badge rather than inventing a fourth
+dot the design never drew.
+
+**Done when:** five sessions read at a glance without labels.
+
+### S24. Conversation header and composer
+**Deliverable:** Header with the session name in condensed 700/24, the branch as an outlined
+tag, and a meta line. Composer in a blueprint frame: `>` prompt, blinking caret, and a
+compact 26px control row with the model button opening a **popover above it** rather than a
+sheet, and a solid accent Send.
+
+Three things we have that the design does not draw: the steer/follow-up queue strip, the
+thinking-level menu, and the context/cost readout. They stay — the design predates them —
+and take the meta line and the control row.
+
+The diff and terminal header buttons and the mic are drawn but have no feature behind them.
+They are built as the design shows and answer with a short "not yet implemented" popover,
+so the layout is right and pressing one explains itself.
+
+**Done when:** the composer matches and the model sheet is gone.
+
+### S25. Transcript restyle
+**Deliverable:** `transcript.css` rebuilt on the tokens — user messages behind a 2px accent
+rule under a `YOU · HH:MM` kicker, agent kickers in accent-700, tool calls as bordered rows
+with a right-aligned result, and diffs in a blueprint frame with a header strip, additions
+in accent-200 and removals in neutral-200.
+
+pi already hands us the diff, and the `edit` tool's `path` argument supplies the header
+strip the design shows. Syntax highlighting needs retuning from the Xcode palette to steel.
+
+**Done when:** a real session reads like the mock.
+
+### S26. Permission card in the log
+**Deliverable:** A `confirm` renders as an ochre blueprint card **inside the transcript** —
+Allow once / Always allow / Deny — with the web view posting the answer back. The sheet
+stays for `select`, `input` and `editor`, which the design does not cover. Plus the
+processing indicator: spinner, rotating phrase, elapsed time, and "esc to interrupt".
+
+**Worth knowing:** a modal sheet cannot be missed; a card in a scrolling log can. The pulsing
+rail dot and the dock badge are what make that safe, and both already exist.
+
+**Done when:** approving from the transcript actually gates the tool.
+
+---
+
+## v7 — The file tree pane
+
+### S27. Working-copy tree
+**Deliverable:** The third pane at 264px — directory tree for the session's folder, mono
+12px rows, depth indent, expand/collapse, `M`/`A` change badges from `git status
+--porcelain`, a "3 changed" count in the header and `+41 −7` in the footer.
+
+New feature, not a restyle: directory walking, git parsing, and per-node open state.
+
+---
+
+## v8 — Everything pi exposes that we haven't used yet
 
 Grouped by what pi gives us, so you can pick by appetite rather than by category.
 

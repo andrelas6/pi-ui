@@ -4,3 +4,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 *.xcworkspace/xcuserdata/
+
+# The full Google Fonts download; the four faces we use live in PiUI/Fonts.
+design-docs/Barlow,Barlow_Condensed,Barlow_Semi_Condensed/

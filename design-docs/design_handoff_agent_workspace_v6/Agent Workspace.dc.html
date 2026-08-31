@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-23e20d2b-faef-410b-9564-c00590d82624/styles.css">
+<script src="_ds/industry-23e20d2b-faef-410b-9564-c00590d82624/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  a { color: var(--color-accent-700); text-decoration: none; }
+  a:hover { color: var(--color-accent-900); }
+  @keyframes om-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .28 } }
+  @keyframes om-blink { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+  @keyframes om-spin { to { transform: rotate(360deg) } }
+  @keyframes om-caret { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+</style>
+</helmet>
+
+<div style="height: 100vh; display: flex; flex-direction: column; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); font-size: 14px; overflow: hidden;">
+
+  <div style="height: 38px; flex: none; display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-4); border-bottom: 1px solid var(--color-divider); background: var(--color-neutral-100);">
+    <div style="font-family: var(--font-heading); font-weight: 700; letter-spacing: .14em; font-size: 13px; text-transform: uppercase;">Foreman</div>
+    <div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--color-neutral-600); letter-spacing: .02em;">~/work/{{ activeName }}</div>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: var(--space-4); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-600); font-family: var(--font-heading);">
+      <span>5 sessions</span>
+      <span style="color: var(--color-accent-700);">1 needs input</span>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: flex; min-height: 0;">
+
+    <!-- SESSIONS -->
+    <aside style="width: 272px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--color-divider); min-height: 0;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; padding: var(--space-4) var(--space-4) var(--space-3);">
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--color-neutral-700);">Sessions</span>
+      </div>
+
+      <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column;">
+        <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="5">
+          <button onClick="{{ s.select }}" style="{{ s.rowStyle }}" style-hover="background: var(--color-accent-100);">
+            <sc-if value="{{ s.active }}" hint-placeholder-val="{{ false }}">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            </sc-if>
+            <span style="width: 14px; height: 22px; flex: none; display: flex; align-items: center; justify-content: center;">
+              <i style="{{ s.dotStyle }}"></i>
+            </span>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+              <span style="display: flex; align-items: center; height: 22px; gap: var(--space-2);">
+                <span style="font-family: var(--font-heading); font-weight: 600; font-size: 16px; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ s.name }}</span>
+              </span>
+              <span style="display: flex; align-items: center; gap: 5px; font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; color: var(--color-neutral-600); white-space: nowrap; overflow: hidden;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                {{ s.branch }}
+              </span>
+            </span>
+            <span style="flex: none; height: 22px; display: flex; align-items: center; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--color-neutral-500);">⌘{{ s.key }}</span>
+          </button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ showLegend }}" hint-placeholder-val="{{ true }}">
+        <div style="flex: none; border-top: 1px solid var(--color-divider); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); font-size: 11px; color: var(--color-neutral-700);">
+          <span style="display: flex; align-items: center; gap: var(--space-3);"><i style="width: 7px; height: 7px; background: var(--color-neutral-400);"></i> Done</span>
+          <span style="display: flex; align-items: center; gap: var(--space-3);"><i style="width: 7px; height: 7px; background: var(--color-accent); animation: om-pulse 2s ease-in-out infinite;"></i> Working</span>
+          <span style="display: flex; align-items: center; gap: var(--space-3);"><i style="width: 7px; height: 7px; background: #b07d2e; animation: om-blink 1.6s ease-in-out infinite;"></i> Needs input</span>
+        </div>
+      </sc-if>
+    </aside>
+
+    <!-- CONVERSATION -->
+    <main style="flex: 1; min-width: 520px; display: flex; flex-direction: column;">
+      <div style="flex: none; display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); border-bottom: 1px solid var(--color-divider);">
+        <h1 style="margin: 0; flex: none; white-space: nowrap; font-family: var(--font-heading); font-weight: 700; font-size: 24px; letter-spacing: .01em;">{{ activeName }}</h1>
+        <span class="tag tag-outline" style="flex: none; white-space: nowrap; font-family: ui-monospace, Menlo, monospace;">{{ activeBranch }}</span>
+        <span style="flex: none; white-space: nowrap; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; font-family: var(--font-heading); color: var(--color-neutral-600);">18 msgs · 4m 12s</span>
+        <div style="margin-left: auto; display: flex; gap: var(--space-2);">
+          <button class="btn btn-ghost btn-icon" title="Diff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 3v18M3 12h18"></path></svg></button>
+          <button class="btn btn-ghost btn-icon" title="Terminal"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m4 17 6-5-6-5M12 19h8"></path></svg></button>
+        </div>
+      </div>
+
+      <div style="flex: 1; overflow-y: auto; padding: var(--space-8) var(--space-8) var(--space-4); display: flex; flex-direction: column; gap: var(--space-8);">
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-3); max-width: 760px;">
+          <span style="font-family: var(--font-heading); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-neutral-600);">You · 14:02</span>
+          <div style="border-left: 2px solid var(--color-accent); padding-left: var(--space-4); line-height: 1.55; text-wrap: pretty;">The settings panel loses unsaved changes when the route changes. Find where the form state lives and keep it across navigation.</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-4); max-width: 760px;">
+          <span style="font-family: var(--font-heading); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-accent-700);">Agent · Opus 4.6</span>
+          <div style="line-height: 1.6; text-wrap: pretty;">The form state is local to <code style="font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--color-neutral-200); padding: 1px 4px;">SettingsPanel</code>, so it unmounts with the route. I moved it into a store scoped to the settings section and left the panel as a controlled view.</div>
+
+          <div style="display: flex; flex-direction: column; gap: 1px; font-family: ui-monospace, Menlo, monospace; font-size: 12px;">
+            <div style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-divider); color: var(--color-neutral-700);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              grep · useState( · src/settings <span style="margin-left: auto; color: var(--color-neutral-500);">7 hits</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-divider); color: var(--color-neutral-700);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h11l5 5v11H4z"></path><path d="M8 12h8M8 16h5"></path></svg>
+              edit · src/settings/store.ts <span style="margin-left: auto; color: var(--color-accent-700);">+34 −6</span>
+            </div>
+          </div>
+
+          <div class="blueprint" style="position: relative; border: 1px solid var(--color-divider); font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.7;">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display: flex; justify-content: space-between; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-divider); color: var(--color-neutral-600); font-size: 11px; letter-spacing: .06em;">
+              <span>src/settings/store.ts</span><span>@@ 12,7 +12,11 @@</span>
+            </div>
+            <div style="padding: var(--space-2) 0;">
+              <div style="padding: 0 var(--space-3); color: var(--color-neutral-600);">  export const useSettingsDraft = create&lt;Draft&gt;((set) =&gt; ({</div>
+              <div style="padding: 0 var(--space-3); background: var(--color-neutral-200); color: var(--color-neutral-700);">− &nbsp;values: {},</div>
+              <div style="padding: 0 var(--space-3); background: var(--color-accent-200); color: var(--color-accent-900);">+ &nbsp;values: readPersisted() ?? {},</div>
+              <div style="padding: 0 var(--space-3); background: var(--color-accent-200); color: var(--color-accent-900);">+ &nbsp;dirty: false,</div>
+              <div style="padding: 0 var(--space-3); color: var(--color-neutral-600);">  }));</div>
+            </div>
+          </div>
+        </div>
+
+        <sc-if value="{{ isAsking }}" hint-placeholder-val="{{ false }}">
+          <div class="blueprint elev-sm" style="position: relative; border: 1px solid #b07d2e; padding: var(--space-4); max-width: 760px; display: flex; flex-direction: column; gap: var(--space-3);">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <i style="width: 8px; height: 8px; background: #b07d2e; animation: om-blink 1.6s ease-in-out infinite;"></i>
+              <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #7d5719;">Permission requested</span>
+            </div>
+            <div style="line-height: 1.55;">Run <code style="font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--color-neutral-200); padding: 1px 4px;">pnpm test --filter settings</code> in the workspace root.</div>
+            <div style="display: flex; gap: var(--space-3); align-items: center;">
+              <button class="btn btn-primary blueprint" style="position: relative;"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Allow once</button>
+              <button class="btn btn-secondary">Always allow</button>
+              <button class="btn btn-ghost">Deny</button>
+              <span style="margin-left: auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--color-neutral-500);">⌘⏎ / ⎋</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isProcessing }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: center; gap: var(--space-3); max-width: 760px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="1.5" style="animation: om-spin 1.4s linear infinite;"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+            <span style="font-family: var(--font-heading); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent-700); min-width: 220px;">{{ procText }}</span>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--color-neutral-500);">{{ elapsed }} · esc to interrupt</span>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- COMPOSER -->
+      <div style="flex: none; padding: var(--space-4) var(--space-8) var(--space-6);">
+        <div class="blueprint" style="position: relative; border: 1px solid var(--color-neutral-400); background: var(--color-neutral-100);">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-4) var(--space-4) var(--space-3);">
+            <span style="font-family: ui-monospace, Menlo, monospace; color: var(--color-accent-700); line-height: 1.5;">&gt;</span>
+            <span style="flex: 1; line-height: 1.5; color: var(--color-neutral-600);">Ask, or describe the next change…<i style="display: inline-block; width: 1px; height: 15px; background: var(--color-text); vertical-align: -2px; margin-left: 1px; animation: om-caret 1.1s steps(1, end) infinite;"></i></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: var(--space-3); padding: 1px var(--space-3); border-top: 1px solid var(--color-divider);">
+            <div style="position: relative;">
+              <button onClick="{{ toggleModels }}" class="btn btn-ghost" style="gap: 6px; min-height: 0; height: 24px; padding: 0 var(--space-2); font-family: var(--font-heading); letter-spacing: .06em; text-transform: uppercase; font-size: 12px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"></path><path d="M12 12v9M4 7.5 12 12l8-4.5"></path></svg>
+                {{ model }}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              <sc-if value="{{ modelOpen }}" hint-placeholder-val="{{ false }}">
+                <div class="blueprint elev-lg" style="position: absolute; bottom: calc(100% + 6px); left: 0; width: 250px; background: var(--color-neutral-100); border: 1px solid var(--color-neutral-400); z-index: 5; display: flex; flex-direction: column;">
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                  <span style="padding: var(--space-2) var(--space-3); font-family: var(--font-heading); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--color-neutral-600); border-bottom: 1px solid var(--color-divider);">Model</span>
+                  <sc-for list="{{ models }}" as="m" hint-placeholder-count="4">
+                    <button onClick="{{ m.pick }}" style="{{ m.style }}" style-hover="background: var(--color-accent-100);">
+                      <span style="display: flex; flex-direction: column; gap: 1px; text-align: left;">
+                        <span style="font-weight: 500;">{{ m.name }}</span>
+                        <span style="font-size: 11px; color: var(--color-neutral-600);">{{ m.note }}</span>
+                      </span>
+                      <sc-if value="{{ m.selected }}" hint-placeholder-val="{{ false }}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" style="flex: none;"><path d="m20 6-11 11-5-5"></path></svg>
+                      </sc-if>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="margin-left: auto; display: flex; align-items: center; gap: var(--space-2);">
+              <button class="btn btn-ghost btn-icon" title="Dictate" style="min-height: 0; height: 24px; width: 24px; padding: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v4M9 22h6"></path></svg>
+              </button>
+              <button class="btn btn-primary blueprint" style="position: relative; min-height: 0; height: 24px; padding: 0 var(--space-3); font-size: 12px;">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                Send
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="margin-left: 6px;"><path d="M12 20V5M6 11l6-6 6 6"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- FILE TREE -->
+    <aside style="width: 264px; flex: none; border-left: 1px solid var(--color-divider); display: flex; flex-direction: column; min-height: 0;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; padding: var(--space-4) var(--space-4) var(--space-3);">
+        <span style="font-family: var(--font-heading); font-weight: 600; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--color-neutral-700);">Files</span>
+        <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--color-accent-700);">3 changed</span>
+      </div>
+      <div style="flex: 1; overflow-y: auto; padding-bottom: var(--space-6);">
+        <sc-for list="{{ tree }}" as="n" hint-placeholder-count="14">
+          <div style="{{ n.style }}" style-hover="background: var(--color-accent-100);">
+            <sc-if value="{{ n.isFolder }}" hint-placeholder-val="{{ true }}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="{{ n.chevStyle }}"><path d="m9 6 6 6-6 6"></path></svg>
+            </sc-if>
+            <sc-if value="{{ n.isFile }}" hint-placeholder-val="{{ false }}">
+              <span style="width: 12px; flex: none;"></span>
+            </sc-if>
+            <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ n.name }}</span>
+            <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+              <span style="flex: none; font-size: 10px; color: var(--color-accent-800); border: 1px solid var(--color-accent-400); padding: 0 3px;">{{ n.badge }}</span>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex: none; border-top: 1px solid var(--color-divider); padding: var(--space-3) var(--space-4); font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--color-neutral-600); display: flex; justify-content: space-between;">
+        <span>{{ activeBranch }}</span><span style="color: var(--color-accent-700);">+41 −7</span>
+      </div>
+    </aside>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showLegend&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Sidebar&quot;},&quot;denseSessions&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Sidebar&quot;}}">
+const SESSIONS = [
+  { name: "api-gateway", branch: "feat/rate-limits", status: "done" },
+  { name: "dashboard-web", branch: "fix/settings-draft", status: "working" },
+  { name: "billing-service", branch: "fix/proration-bug", status: "asking" },
+  { name: "infra-terraform", branch: "chore/tf-1.9", status: "done" },
+  { name: "docs-site", branch: "main", status: "done" }
+];
+
+const MODELS = [
+  { name: "Opus 4.6", note: "Deepest reasoning · slowest" },
+  { name: "Sonnet 4.6", note: "Balanced · default" },
+  { name: "Haiku 4.5", note: "Fast edits, small diffs" },
+  { name: "Local · qwen-coder", note: "Offline, no context limit" }
+];
+
+const TREE = [
+  { d: 0, k: "folder", name: "dashboard-web", open: true },
+  { d: 1, k: "folder", name: "src", open: true },
+  { d: 2, k: "folder", name: "settings", open: true },
+  { d: 3, k: "file", name: "SettingsPanel.tsx", badge: "M" },
+  { d: 3, k: "file", name: "store.ts", badge: "M" },
+  { d: 3, k: "file", name: "schema.ts" },
+  { d: 2, k: "folder", name: "routes", open: false },
+  { d: 2, k: "folder", name: "lib", open: false },
+  { d: 2, k: "file", name: "main.tsx" },
+  { d: 1, k: "folder", name: "tests", open: true },
+  { d: 2, k: "file", name: "settings.spec.ts", badge: "A" },
+  { d: 1, k: "folder", name: "public", open: false },
+  { d: 1, k: "file", name: "package.json" },
+  { d: 1, k: "file", name: "pnpm-lock.yaml" },
+  { d: 1, k: "file", name: "vite.config.ts" },
+  { d: 1, k: "file", name: "README.md" }
+];
+
+const PHRASES = ["processing…", "cooking", "getting there…", "reading the diff", "thinking it through", "almost"];
+
+const STATUS = {
+  done: { label: "Done", color: "var(--color-neutral-600)" },
+  working: { label: "Working", color: "var(--color-accent-700)" },
+  asking: { label: "Needs input", color: "var(--color-accent-800)" }
+};
+
+class Component extends DCLogic {
+  state = { active: 1, phrase: 0, secs: 42, modelOpen: false, model: "Opus 4.6" };
+
+  componentDidMount() {
+    this.t1 = setInterval(() => this.setState(s => ({ phrase: (s.phrase + 1) % PHRASES.length })), 1600);
+    this.t2 = setInterval(() => this.setState(s => ({ secs: s.secs + 1 })), 1000);
+    this.onKey = (e) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= SESSIONS.length) { e.preventDefault(); this.setState({ active: n - 1 }); }
+    };
+    window.addEventListener("keydown", this.onKey);
+  }
+  componentWillUnmount() {
+    clearInterval(this.t1); clearInterval(this.t2);
+    window.removeEventListener("keydown", this.onKey);
+  }
+
+  dotStyle(status) {
+    const base = "display: block; width: 8px; height: 8px; ";
+    if (status === "working") return base + "background: var(--color-accent); animation: om-pulse 2s ease-in-out infinite;";
+    if (status === "asking") return base + "background: #b07d2e; animation: om-blink 1.6s ease-in-out infinite;";
+    return base + "background: var(--color-neutral-400);";
+  }
+
+  renderVals() {
+    const dense = this.props.denseSessions ?? false;
+    const act = SESSIONS[this.state.active];
+    const pad = dense ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-3)";
+
+    const sessions = SESSIONS.map((s, i) => {
+      const active = i === this.state.active;
+      return {
+        ...s, key: i + 1, active,
+        statusLabel: STATUS[s.status].label,
+        statusColor: STATUS[s.status].color,
+        dotStyle: this.dotStyle(s.status),
+        rowStyle: `position: relative; display: flex; gap: var(--space-3); align-items: flex-start; text-align: left; width: 100%; padding: ${pad}; border: 0; border-left: 2px solid ${active ? "var(--color-accent)" : "transparent"}; border-bottom: 1px solid var(--color-divider); background: ${active ? "var(--color-accent-100)" : "transparent"}; color: inherit; font: inherit; cursor: pointer;`,
+        select: () => this.setState({ active: i })
+      };
+    });
+
+    const tree = TREE.map(n => ({
+      name: n.name,
+      badge: n.badge || false,
+      isFolder: n.k === "folder",
+      isFile: n.k === "file",
+      chevStyle: `flex: none; transform: rotate(${n.open ? 90 : 0}deg); color: var(--color-neutral-600);`,
+      style: `display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 3px var(--space-4) 3px ${8 + n.d * 13}px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: ${n.k === "folder" ? "var(--color-text)" : "var(--color-neutral-700)"};`
+    }));
+
+    const models = MODELS.map(m => ({
+      ...m,
+      selected: m.name === this.state.model,
+      style: "display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-3); border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left;",
+      pick: () => this.setState({ model: m.name, modelOpen: false })
+    }));
+
+    const m = Math.floor(this.state.secs / 60), s = String(this.state.secs % 60).padStart(2, "0");
+
+    return {
+      sessions, tree, models,
+      activeName: act.name, activeBranch: act.branch,
+      isProcessing: act.status === "working",
+      isAsking: act.status === "asking",
+      procText: PHRASES[this.state.phrase],
+      elapsed: `${m}:${s}`,
+      model: this.state.model,
+      modelOpen: this.state.modelOpen,
+      toggleModels: () => this.setState(st => ({ modelOpen: !st.modelOpen })),
+      showLegend: this.props.showLegend ?? true
+    };
+  }
+}
+
+</script>
+</body>
+</html>
