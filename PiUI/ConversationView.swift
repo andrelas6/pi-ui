@@ -22,6 +22,10 @@ struct ConversationView: View {
 
             if chat.isOpen || !chat.messages.isEmpty {
                 transcript
+
+                if chat.isStreaming {
+                    ProcessingIndicator(stop: chat.stopEverything)
+                }
                 Divider()
                 composer
             }
@@ -73,7 +77,9 @@ struct ConversationView: View {
     }
 
     private var transcript: some View {
-        TranscriptView(messages: chat.messages)
+        TranscriptView(messages: chat.messages) { id, choice in
+            chat.answerRequest(id: id, choice: choice)
+        }
     }
 
     private var composer: some View {

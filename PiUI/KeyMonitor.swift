@@ -6,7 +6,12 @@ import AppKit
 final class KeyMonitor {
     private var handle: Any?
 
-    func start(newSession: @escaping () -> Void, jump: @escaping (Int) -> Void) {
+    func start(
+        newSession: @escaping () -> Void,
+        jump: @escaping (Int) -> Void,
+        interrupt: @escaping () -> Void = {},
+        answer: @escaping (String) -> Bool = { _ in false }
+    ) {
         guard handle == nil else { return }
 
         handle = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -19,9 +24,26 @@ final class KeyMonitor {
                 return nil
             }
 
+            // Only swallowed when something is actually asking; otherwise these keys
+            // belong to whatever has focus.
+            if held == .command, typed.lowercased() == "y", answer(ChatMessage.Request.allow) {
+                return nil
+            }
+
+            if held == .command, typed.lowercased() == "r", answer(ChatMessage.Request.deny) {
+                return nil
+            }
+
             if held == .command, let number = Int(typed), (1...9).contains(number) {
                 DispatchQueue.main.async { jump(number) }
                 return nil
+            }
+
+            // Esc only means stop while something is running; otherwise it belongs to
+            // whatever has focus.
+            if held.isEmpty, event.keyCode == 53 {
+                DispatchQueue.main.async(execute: interrupt)
+                return event
             }
 
             return event

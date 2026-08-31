@@ -138,7 +138,63 @@
         return body;
     }
 
+    function paintPermission(node, message) {
+        var request = message.request || {};
+        node.className = "msg permission";
+        node.innerHTML =
+            '<div class="ask">' +
+            '<i class="corner tl"></i><i class="corner tr"></i>' +
+            '<i class="corner bl"></i><i class="corner br"></i>' +
+            '<div class="head"><span class="dot"></span><span class="label"></span></div>' +
+            '<div class="detail">Allow <code class="tool"></code> to run <code class="cmd"></code>?</div>' +
+            '<div class="choices"></div>' +
+            "</div>";
+
+        node.querySelector(".label").textContent = message.kicker || "permission requested";
+        node.querySelector(".tool").textContent = request.tool || "";
+        node.querySelector(".cmd").textContent = request.detail || "";
+
+        var choices = node.querySelector(".choices");
+        if (message.done) {
+            var settled = document.createElement("span");
+            settled.className = "settled";
+            settled.textContent = request.answer === "deny" ? "denied"
+                : request.answer === "always" ? "always allowed"
+                : request.answer === "allow" ? "allowed"
+                : "no longer waiting";
+            choices.appendChild(settled);
+            return;
+        }
+
+        [
+            { key: "allow", label: "Allow once", kind: "primary" },
+            { key: "always", label: "Always allow", kind: "secondary" },
+            { key: "deny", label: "Deny", kind: "ghost" }
+        ].forEach(function (choice) {
+            var button = document.createElement("button");
+            button.className = "choice " + choice.kind;
+            button.textContent = choice.label;
+            button.addEventListener("click", function () {
+                window.webkit.messageHandlers.permission.postMessage({
+                    id: message.id,
+                    choice: choice.key
+                });
+            });
+            choices.appendChild(button);
+        });
+
+        var hint = document.createElement("span");
+        hint.className = "hint";
+        hint.textContent = "⌘Y allow · ⌘R deny";
+        choices.appendChild(hint);
+    }
+
     function paint(node, message) {
+        if (message.kind === "permission") {
+            paintPermission(node, message);
+            return;
+        }
+
         if (message.kind === "tool") {
             node.className = "msg tool";
             paintTool(node, message);
@@ -180,6 +236,10 @@
                 tool.failed,
                 message.done
             ].join("|");
+        }
+        if (message.kind === "permission") {
+            var request = message.request || {};
+            return [request.tool, request.detail, request.answer, message.done].join("|");
         }
         return [message.text.length, message.done, message.kicker].join("|");
     }

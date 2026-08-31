@@ -4,14 +4,16 @@ import WebKit
 
 struct TranscriptView: NSViewRepresentable {
     let messages: [ChatMessage]
+    let answer: (String, String) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(answer: answer)
     }
 
     func makeNSView(context: Context) -> WKWebView {
         let settings = WKWebViewConfiguration()
         settings.userContentController.add(context.coordinator, name: "openLink")
+        settings.userContentController.add(context.coordinator, name: "permission")
 
         let web = WKWebView(frame: .zero, configuration: settings)
         web.navigationDelegate = context.coordinator
@@ -23,6 +25,7 @@ struct TranscriptView: NSViewRepresentable {
     }
 
     func updateNSView(_ web: WKWebView, context: Context) {
+        context.coordinator.answer = answer
         context.coordinator.show(messages)
     }
 
@@ -54,8 +57,13 @@ struct TranscriptView: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var web: WKWebView?
+        var answer: (String, String) -> Void
         private var ready = false
         private var pending: [ChatMessage]?
+
+        init(answer: @escaping (String, String) -> Void) {
+            self.answer = answer
+        }
 
         func webView(_ web: WKWebView, didFinish navigation: WKNavigation!) {
             ready = true
@@ -80,6 +88,14 @@ struct TranscriptView: NSViewRepresentable {
             _ controller: WKUserContentController,
             didReceive message: WKScriptMessage
         ) {
+            if message.name == "permission",
+               let payload = message.body as? [String: String],
+               let id = payload["id"],
+               let choice = payload["choice"] {
+                answer(id, choice)
+                return
+            }
+
             guard message.name == "openLink",
                   let text = message.body as? String,
                   let url = URL(string: text),

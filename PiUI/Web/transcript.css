@@ -204,3 +204,80 @@ details.card > summary::-webkit-details-marker { display: none; }
 .hljs-addition { color: var(--color-accent-800); }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong { font-weight: 600; }
+
+/* The one card that carries a border colour of its own: it is asking for you. */
+.msg.permission .ask {
+    position: relative;
+    border: 1px solid var(--color-ochre);
+    background: var(--color-neutral-100);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.msg.permission .head { display: flex; align-items: center; gap: var(--space-2); }
+
+.msg.permission .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--color-ochre);
+    animation: waiting 1.6s ease-in-out infinite;
+}
+
+@keyframes waiting { 50% { opacity: 0.3; } }
+
+.msg.permission .label {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-ochre-text);
+}
+
+.msg.permission .detail { line-height: 1.55; }
+.msg.permission .detail code { font-size: 12.5px; }
+
+.msg.permission .choices { display: flex; align-items: center; gap: var(--space-2); }
+
+.choice {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0 var(--space-3);
+    height: 24px;
+    border: 1px solid var(--color-neutral-400);
+    background: none;
+    color: var(--color-neutral-700);
+    cursor: pointer;
+}
+
+.choice.primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-neutral-100);
+}
+
+.choice.ghost { border-color: transparent; }
+.choice:hover { background: var(--color-accent-100); color: var(--color-accent-800); }
+.choice.primary:hover { background: var(--color-accent-600); color: var(--color-neutral-100); }
+
+.msg.permission .hint {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-neutral-500);
+}
+
+.msg.permission .settled {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-neutral-600);
+}

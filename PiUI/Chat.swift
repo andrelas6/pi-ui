@@ -295,6 +295,7 @@ final class Chat {
             receive(event)
 
         case "agent_settled":
+            closeUnansweredRequests()
             finishStreaming()
             isStreaming = false
             steering = []
@@ -321,6 +322,21 @@ final class Chat {
                 return
             }
             ask = waiting
+            guard waiting.method == .confirm else { return }
+            messages.append(
+                ChatMessage(
+                    id: waiting.id,
+                    kind: .permission,
+                    text: "",
+                    done: false,
+                    kicker: "permission requested",
+                    request: ChatMessage.Request(
+                        tool: waiting.title,
+                        detail: waiting.message,
+                        answer: ""
+                    )
+                )
+            )
         }
     }
 
@@ -345,6 +361,21 @@ final class Chat {
 
     func dismiss(_ ask: Ask) {
         reply(["id": .string(ask.id), "cancelled": .bool(true)])
+    }
+
+    /// Answering from the log: the card records what was chosen and stops offering.
+    func answerRequest(id: String, choice: String) {
+        guard let waiting = ask, waiting.id == id else { return }
+        if let index = messages.firstIndex(where: { $0.id == id && $0.kind == .permission }) {
+            messages[index].request?.answer = choice
+            messages[index].done = true
+        }
+
+        switch choice {
+        case ChatMessage.Request.always: alwaysAllow(waiting)
+        case ChatMessage.Request.allow: answer(waiting, confirmed: true)
+        default: answer(waiting, confirmed: false)
+        }
     }
 
     private func reply(_ fields: [String: JSONValue]) {
@@ -417,6 +448,13 @@ final class Chat {
               let index = messages.firstIndex(where: { $0.id == streamingId })
         else { return }
         messages[index].text += delta
+    }
+
+    private func closeUnansweredRequests() {
+        for index in messages.indices where messages[index].kind == .permission {
+            guard messages[index].done == false else { continue }
+            messages[index].done = true
+        }
     }
 
     private func finishStreaming() {

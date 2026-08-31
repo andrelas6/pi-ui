@@ -37,6 +37,18 @@ struct ContentView: View {
                 jump: { number in
                     guard let session = store.session(at: number) else { return }
                     pool.show(session, thenType: true)
+                },
+                interrupt: {
+                    guard let chat = pool.current, chat.isStreaming else { return }
+                    chat.stopEverything()
+                },
+                answer: { choice in
+                    guard let chat = pool.current,
+                          let ask = chat.ask,
+                          ask.method == .confirm
+                    else { return false }
+                    chat.answerRequest(id: ask.id, choice: choice)
+                    return true
                 }
             )
         }
@@ -81,8 +93,16 @@ struct ContentView: View {
         return store.sessions.filter { pool.isWaiting($0.id) }.count
     }
 
+    /// A confirm is answered in the transcript; select, input and editor still need
+    /// somewhere to go.
     private var sheetBinding: Binding<Ask?> {
-        Binding(get: { pool?.current?.ask }, set: { _ in })
+        Binding(
+            get: {
+                guard let ask = pool?.current?.ask, ask.method != .confirm else { return nil }
+                return ask
+            },
+            set: { _ in }
+        )
     }
 
     private func start(_ folder: URL) {
