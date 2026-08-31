@@ -8,6 +8,9 @@ struct ConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            header
+            Hairline()
+
             if let problem = chat.problem {
                 Banner(text: problem, icon: "exclamationmark.triangle.fill", tint: .red)
             }
@@ -28,31 +31,6 @@ struct ConversationView: View {
                 )
             }
         }
-        .navigationTitle(chat.folder?.lastPathComponent ?? "pi")
-        .toolbar {
-            ToolbarItemGroup {
-                if let stats = chat.stats {
-                    StatsReadout(stats: stats)
-                }
-
-                if !chat.thinkingLevels.isEmpty {
-                    Menu(chat.thinkingLevel.isEmpty ? "thinking" : chat.thinkingLevel) {
-                        ForEach(chat.thinkingLevels, id: \.self) { level in
-                            Button(level) {
-                                Task { await chat.setThinking(level) }
-                            }
-                        }
-                    }
-                    .help("How hard the model thinks before answering")
-                }
-
-                Button(chat.modelName.isEmpty ? "Model" : chat.modelName) {
-                    pickingModel = true
-                    Task { await chat.loadModels() }
-                }
-                .help("Switch the model for this session")
-            }
-        }
         .sheet(isPresented: $pickingModel) {
             ModelPicker(
                 models: chat.models,
@@ -68,6 +46,45 @@ struct ConversationView: View {
             // A hop, so the box exists before the cursor is sent to it.
             DispatchQueue.main.async { typing = true }
         }
+    }
+
+    /// Plain for now: S24 rebuilds this as the design's header, with the session name,
+    /// the branch tag and the icon buttons.
+    private var header: some View {
+        HStack(spacing: Space.three) {
+            Text(chat.folder?.lastPathComponent ?? "pi")
+                .font(Typeface.heading(20, bold: true))
+                .foregroundStyle(Palette.text)
+
+            Spacer()
+
+            if let stats = chat.stats {
+                StatsReadout(stats: stats)
+            }
+
+            if !chat.thinkingLevels.isEmpty {
+                Menu(chat.thinkingLevel.isEmpty ? "thinking" : chat.thinkingLevel) {
+                    ForEach(chat.thinkingLevels, id: \.self) { level in
+                        Button(level) {
+                            Task { await chat.setThinking(level) }
+                        }
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("How hard the model thinks before answering")
+            }
+
+            Button(chat.modelName.isEmpty ? "Model" : chat.modelName) {
+                pickingModel = true
+                Task { await chat.loadModels() }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Palette.neutral(700))
+            .help("Switch the model for this session")
+        }
+        .font(Typeface.body(12))
+        .padding(Space.four)
     }
 
     private var transcript: some View {

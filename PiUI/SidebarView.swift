@@ -14,12 +14,39 @@ struct SidebarView: View {
     @State private var deleteFailed: String?
 
     var body: some View {
+        VStack(spacing: 0) {
+            header
+            Hairline()
+            sessions
+        }
+        .background(Palette.bg)
+    }
+
+    private var header: some View {
+        HStack {
+            Kicker(text: "sessions")
+            Spacer()
+            Button(action: pickFolder) {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Palette.neutral(600))
+            .help("Pick a folder to run pi in (⌃T)")
+        }
+        .padding(.horizontal, Space.four)
+        .padding(.top, Space.four)
+        .padding(.bottom, Space.three)
+    }
+
+    private var sessions: some View {
         List(selection: $selected) {
             ForEach(store.groups) { group in
                 Section(group.title) {
                     ForEach(group.sessions) { session in
                         row(for: session)
                         .tag(session.id)
+                        .listRowSeparator(.hidden)
                         .contextMenu {
                             Button("Rename…") { startRenaming(session) }
                             Button("Delete…", role: .destructive) { deleting = session }
@@ -28,22 +55,12 @@ struct SidebarView: View {
                 }
             }
         }
+        .listSectionSeparator(.hidden)
+        .scrollContentBackground(.hidden)
+        .background(Palette.bg)
         .overlay {
             if store.sessions.isEmpty {
-                ContentUnavailableView(
-                    "No sessions",
-                    systemImage: "bubble.left.and.bubble.right",
-                    description: Text("Pick a folder to start one.")
-                )
-            }
-        }
-        .navigationTitle("Sessions")
-        .toolbar {
-            ToolbarItem {
-                Button(action: pickFolder) {
-                    Label("New session", systemImage: "plus")
-                }
-                .help("Pick a folder to run pi in")
+                Kicker(text: "no sessions", size: 12, color: Palette.neutral(500))
             }
         }
         .onChange(of: selected) { _, id in

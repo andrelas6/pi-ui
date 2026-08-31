@@ -2,6 +2,10 @@ import SwiftUI
 
 @main
 struct PiUIApp: App {
+    /// The design's title bar reads FOREMAN; that was brief placeholder. One constant
+    /// so the name is a single edit if it ever changes.
+    static let name = "PiUI"
+
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var shortcuts = Shortcuts()
 
@@ -10,8 +14,8 @@ struct PiUIApp: App {
             ContentView(shortcuts: shortcuts)
         }
         .defaultSize(width: 1100, height: 750)
+        .windowStyle(.hiddenTitleBar)
         .commands {
-            SidebarCommands()
 
             CommandGroup(after: .newItem) {
                 Button("New Session…") {

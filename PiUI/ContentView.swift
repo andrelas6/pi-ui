@@ -8,20 +8,27 @@ struct ContentView: View {
     @State private var keys = KeyMonitor()
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView(store: store, pool: pool, open: show, start: start)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 380)
-        } detail: {
-            if let chat = pool?.current {
-                ConversationView(chat: chat)
-            } else {
-                ContentUnavailableView(
-                    "No session open",
-                    systemImage: "sidebar.left",
-                    description: Text("Press ⌃T, or use the + button, to pick a folder.")
-                )
+        VStack(spacing: 0) {
+            TitleBar(
+                appName: PiUIApp.name,
+                path: pool?.current?.folder?.shortPath,
+                sessionCount: store.sessions.count,
+                needingInput: needingInput
+            )
+            Hairline()
+
+            HStack(spacing: 0) {
+                SidebarView(store: store, pool: pool, open: show, start: start)
+                    .frame(width: Frame.sessionRail)
+
+                Hairline(vertical: true)
+
+                conversation
+                    .frame(minWidth: Frame.mainMinimum, maxWidth: .infinity)
             }
+            .frame(maxHeight: .infinity)
         }
+        .background(Palette.bg)
         .task {
             let pool = ChatPool(store: store)
             self.pool = pool
@@ -52,6 +59,26 @@ struct ContentView: View {
                 cancel: { pool?.current?.dismiss(ask) }
             )
         }
+    }
+
+    @ViewBuilder
+    private var conversation: some View {
+        if let chat = pool?.current {
+            ConversationView(chat: chat)
+        } else {
+            VStack(spacing: Space.three) {
+                Kicker(text: "no session open", size: 13, tracking: 0.14)
+                Text("Press ⌃T, or use the + button, to pick a folder.")
+                    .font(Typeface.body(13))
+                    .foregroundStyle(Palette.neutral(600))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var needingInput: Int {
+        guard let pool else { return 0 }
+        return store.sessions.filter { pool.isWaiting($0.id) }.count
     }
 
     private var sheetBinding: Binding<Ask?> {
