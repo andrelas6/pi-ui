@@ -92,23 +92,23 @@ struct PiCommandTests {
 }
 
 @MainActor
-struct PaletteRequestTests {
+struct CommandLoadingTests {
     private func newChat() -> Chat {
         let index = FileManager.default.temporaryDirectory
             .appending(path: "pi-ui-palette-\(UUID().uuidString).json")
         return Chat(store: SessionStore(file: index))
     }
 
-    @Test func startsWithNoRequest() {
-        #expect(newChat().paletteRequests == 0)
+    @Test func startsWithNothingLoaded() {
         #expect(newChat().commands.isEmpty)
     }
 
-    /// Each press has to register, or a second ⌘K after dismissing would do nothing.
-    @Test func eachPressIsItsOwnRequest() {
+    /// The palette is owned by the window, not by a session. A per-session counter is
+    /// what made switching sessions open it: the view compared one session's count
+    /// against another's and could not tell that from a keypress.
+    @Test func aSessionCarriesNoPaletteState() {
         let chat = newChat()
-        chat.askForPalette()
-        chat.askForPalette()
-        #expect(chat.paletteRequests == 2)
+        #expect(chat.commands.isEmpty)
+        #expect(chat.draft.isEmpty)
     }
 }

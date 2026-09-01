@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var store = SessionStore()
     @State private var pool: ChatPool?
     @State private var keys = KeyMonitor()
+    @State private var showingPalette = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,7 +57,7 @@ struct ContentView: View {
                     chat.answerRequest(id: ask.id, choice: choice)
                     return true
                 },
-                palette: { pool.current?.askForPalette() }
+                palette: { openPalette() }
             )
         }
         .onChange(of: shortcuts.newSessionCount) { _, _ in
@@ -64,13 +65,23 @@ struct ContentView: View {
             startNewSession(with: pool)
         }
         .onChange(of: shortcuts.paletteCount) { _, _ in
-            pool?.current?.askForPalette()
+            openPalette()
         }
         .onChange(of: shortcuts.jumpTo) { _, number in
             guard let number else { return }
             shortcuts.jumpTo = nil
             guard let session = store.session(at: number) else { return }
             pool?.show(session, thenType: true)
+        }
+        .sheet(isPresented: $showingPalette) {
+            CommandPalette(
+                commands: pool?.current?.commands ?? [],
+                pick: { command in
+                    showingPalette = false
+                    write(command)
+                },
+                close: { showingPalette = false }
+            )
         }
         .sheet(item: sheetBinding) { ask in
             AskSheet(
@@ -113,6 +124,21 @@ struct ContentView: View {
             },
             set: { _ in }
         )
+    }
+
+    private func openPalette() {
+        guard let chat = pool?.current else { return }
+        showingPalette = true
+        Task { await chat.loadCommands() }
+    }
+
+    /// Written into the box rather than sent: most commands take an argument, and
+    /// firing one blind is not recoverable.
+    private func write(_ command: PiCommand) {
+        guard let chat = pool?.current else { return }
+        let invocation = "/\(command.name) "
+        chat.draft = chat.draft.isEmpty ? invocation : chat.draft + " " + invocation
+        chat.askToType()
     }
 
     private func start(_ folder: URL) {

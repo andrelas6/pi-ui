@@ -22,7 +22,10 @@ final class Chat {
     private(set) var stats: SessionStats?
     private(set) var files = WorkingCopy()
     private(set) var commands: [PiCommand] = []
-    private(set) var paletteRequests = 0
+
+    /// The composer's text lives with the session, so switching away and back does not
+    /// lose what you had typed.
+    var draft = ""
     var onSettled: (@MainActor () -> Void)?
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
@@ -52,10 +55,6 @@ final class Chat {
 
     func markOpenForTesting(_ id: String) {
         openSessionId = id
-    }
-
-    func askForPalette() {
-        paletteRequests += 1
     }
 
     /// Skills, templates and extension commands are discovered by pi at startup, so
