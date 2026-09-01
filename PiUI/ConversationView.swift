@@ -6,6 +6,7 @@ struct ConversationView: View {
     @FocusState private var typing: Bool
     @State private var pickingModel = false
     @State private var pane: CGSize = .zero
+    @State private var showingPalette = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +38,20 @@ struct ConversationView: View {
                     .onChange(of: proxy.size) { _, size in pane = size }
             }
         )
+        .onChange(of: chat.paletteRequests) { _, _ in
+            showingPalette = true
+            Task { await chat.loadCommands() }
+        }
+        .sheet(isPresented: $showingPalette) {
+            CommandPalette(
+                commands: chat.commands,
+                pick: { command in
+                    showingPalette = false
+                    write(command)
+                },
+                close: { showingPalette = false }
+            )
+        }
         .onChange(of: chat.typingRequests) { _, _ in
             // A hop, so the box exists before the cursor is sent to it.
             DispatchQueue.main.async { typing = true }
@@ -207,6 +222,14 @@ struct ConversationView: View {
     private var spaceAroundBar: CGFloat {
         guard pane.height > 0 else { return Space.four }
         return max(pane.height * 0.04, Space.four)
+    }
+
+    /// Written into the box rather than sent: most commands take an argument, and
+    /// firing one blind is not recoverable.
+    private func write(_ command: PiCommand) {
+        let invocation = "/\(command.name) "
+        draft = draft.isEmpty ? invocation : draft + " " + invocation
+        typing = true
     }
 
     private var canSend: Bool {

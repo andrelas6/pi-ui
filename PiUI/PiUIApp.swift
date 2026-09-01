@@ -24,6 +24,11 @@ struct PiUIApp: App {
                 .keyboardShortcut("t", modifiers: .control)
             }
 
+            CommandGroup(after: .toolbar) {
+                Button("Commands…") { shortcuts.askForPalette() }
+                    .keyboardShortcut("k", modifiers: .command)
+            }
+
             CommandMenu("Sessions") {
                 ForEach(1...9, id: \.self) { number in
                     Button("Session \(number)") {

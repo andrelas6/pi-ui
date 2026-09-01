@@ -55,12 +55,16 @@ struct ContentView: View {
                     else { return false }
                     chat.answerRequest(id: ask.id, choice: choice)
                     return true
-                }
+                },
+                palette: { pool.current?.askForPalette() }
             )
         }
         .onChange(of: shortcuts.newSessionCount) { _, _ in
             guard let pool else { return }
             startNewSession(with: pool)
+        }
+        .onChange(of: shortcuts.paletteCount) { _, _ in
+            pool?.current?.askForPalette()
         }
         .onChange(of: shortcuts.jumpTo) { _, number in
             guard let number else { return }

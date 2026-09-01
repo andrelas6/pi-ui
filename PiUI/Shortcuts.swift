@@ -7,9 +7,14 @@ import Observation
 @Observable
 final class Shortcuts {
     private(set) var newSessionCount = 0
+    private(set) var paletteCount = 0
     var jumpTo: Int?
 
     func askForNewSession() {
         newSessionCount += 1
+    }
+
+    func askForPalette() {
+        paletteCount += 1
     }
 }
