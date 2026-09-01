@@ -10,7 +10,8 @@ final class KeyMonitor {
         newSession: @escaping () -> Void,
         jump: @escaping (Int) -> Void,
         interrupt: @escaping () -> Void = {},
-        answer: @escaping (String) -> Bool = { _ in false }
+        answer: @escaping (String) -> Bool = { _ in false },
+        palette: @escaping () -> Void = {}
     ) {
         guard handle == nil else { return }
 
@@ -26,6 +27,11 @@ final class KeyMonitor {
 
             // Only swallowed when something is actually asking; otherwise these keys
             // belong to whatever has focus.
+            if held == .command, typed.lowercased() == "k" {
+                DispatchQueue.main.async(execute: palette)
+                return nil
+            }
+
             if held == .command, typed.lowercased() == "y", answer(ChatMessage.Request.allow) {
                 return nil
             }

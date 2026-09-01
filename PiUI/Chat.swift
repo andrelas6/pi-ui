@@ -21,6 +21,8 @@ final class Chat {
     private(set) var thinkingLevel = ""
     private(set) var stats: SessionStats?
     private(set) var files = WorkingCopy()
+    private(set) var commands: [PiCommand] = []
+    private(set) var paletteRequests = 0
     var onSettled: (@MainActor () -> Void)?
     var queueAsFollowUp = false
     private(set) var openSessionId: String?
@@ -50,6 +52,18 @@ final class Chat {
 
     func markOpenForTesting(_ id: String) {
         openSessionId = id
+    }
+
+    func askForPalette() {
+        paletteRequests += 1
+    }
+
+    /// Skills, templates and extension commands are discovered by pi at startup, so
+    /// this only has to ask once per session.
+    func loadCommands() async {
+        guard commands.isEmpty, let session else { return }
+        guard let response = try? await session.send("get_commands") else { return }
+        commands = PiCommand.all(from: response)
     }
 
     func askToType() {
