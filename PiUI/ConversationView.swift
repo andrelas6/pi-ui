@@ -1,12 +1,10 @@
 import SwiftUI
 
 struct ConversationView: View {
-    let chat: Chat
-    @State private var draft = ""
+    @Bindable var chat: Chat
     @FocusState private var typing: Bool
     @State private var pickingModel = false
     @State private var pane: CGSize = .zero
-    @State private var showingPalette = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,20 +36,6 @@ struct ConversationView: View {
                     .onChange(of: proxy.size) { _, size in pane = size }
             }
         )
-        .onChange(of: chat.paletteRequests) { _, _ in
-            showingPalette = true
-            Task { await chat.loadCommands() }
-        }
-        .sheet(isPresented: $showingPalette) {
-            CommandPalette(
-                commands: chat.commands,
-                pick: { command in
-                    showingPalette = false
-                    write(command)
-                },
-                close: { showingPalette = false }
-            )
-        }
         .onChange(of: chat.typingRequests) { _, _ in
             // A hop, so the box exists before the cursor is sent to it.
             DispatchQueue.main.async { typing = true }
@@ -113,7 +97,7 @@ struct ConversationView: View {
                         .font(Typeface.mono(13))
                         .foregroundStyle(Palette.accent(700))
 
-                    TextField(placeholder, text: $draft, axis: .vertical)
+                    TextField(placeholder, text: $chat.draft, axis: .vertical)
                         .textFieldStyle(.plain)
                         .font(Typeface.body(13))
                         .foregroundStyle(Palette.text)
@@ -139,7 +123,7 @@ struct ConversationView: View {
         .onChange(of: chat.recovered) { _, texts in
             guard !texts.isEmpty else { return }
             let back = chat.takeRecovered().joined(separator: "\n")
-            draft = draft.isEmpty ? back : draft + "\n" + back
+            chat.draft = chat.draft.isEmpty ? back : chat.draft + "\n" + back
         }
     }
 
@@ -224,16 +208,8 @@ struct ConversationView: View {
         return max(pane.height * 0.04, Space.four)
     }
 
-    /// Written into the box rather than sent: most commands take an argument, and
-    /// firing one blind is not recoverable.
-    private func write(_ command: PiCommand) {
-        let invocation = "/\(command.name) "
-        draft = draft.isEmpty ? invocation : draft + " " + invocation
-        typing = true
-    }
-
     private var canSend: Bool {
-        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var placeholder: String {
@@ -242,8 +218,8 @@ struct ConversationView: View {
     }
 
     private func send() {
-        chat.send(draft)
-        draft = ""
+        chat.send(chat.draft)
+        chat.draft = ""
     }
 }
 
