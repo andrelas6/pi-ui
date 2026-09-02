@@ -40,7 +40,8 @@ actor PiSession {
         let child = AgentProcess(
             executable: executable,
             arguments: ["--mode", "rpc"] + arguments,
-            folder: folder
+            folder: folder,
+            channel: "pi:\(folder.lastPathComponent)"
         )
 
         do {

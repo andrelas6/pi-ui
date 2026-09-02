@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main
@@ -9,6 +10,19 @@ struct PiUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var shortcuts = Shortcuts()
     @State private var appearance = Appearance.saved
+
+    /// An always-on log nobody can find is just disk use.
+    private func revealLog() {
+        Task {
+            let folder = await EventLog.shared.directory
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            NSWorkspace.shared.activateFileViewerSelecting([folder])
+        }
+    }
+
+    private func deleteLogs() {
+        Task { await EventLog.shared.purge() }
+    }
 
     private var appearanceChoice: Binding<Appearance> {
         Binding(
@@ -44,6 +58,11 @@ struct PiUIApp: App {
             CommandGroup(after: .toolbar) {
                 Button("Commands…") { shortcuts.askForPalette() }
                     .keyboardShortcut("k", modifiers: .command)
+            }
+
+            CommandGroup(replacing: .help) {
+                Button("Reveal Log in Finder") { revealLog() }
+                Button("Delete Logs") { deleteLogs() }
             }
 
             CommandMenu("View") {

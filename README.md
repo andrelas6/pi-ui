@@ -47,6 +47,30 @@ you start a Claude session, so you can leave it unset if you only use pi.
 Model and thinking-level pickers, the ⌘K command palette and token stats are pi-only for now;
 a Claude session simply renders without them.
 
+### The event log
+
+The app keeps a record of what it saw, so a bug that has already happened can be read rather
+than reproduced. It is **on**, because you cannot turn logging on after the fact.
+
+```
+~/Library/Application Support/pi-ui/logs/piui-YYYY-MM-DD.jsonl
+```
+
+One JSON object per line: every message exchanged with an agent in both directions, when a
+process was spawned and what it exited with, anything it said on stderr, and the app's own
+decisions — sessions opened and closed, permissions asked and answered, errors shown to you.
+
+```sh
+jq -c 'select(.kind == "wire")' ~/Library/Application\ Support/pi-ui/logs/piui-*.jsonl
+```
+
+**It contains your prompts**, along with paths and diffs of files the agent touched, because
+that is what crosses the wire. Any single string over 2KB is clipped to its length, so whole
+file contents do not land on disk, and the environment is never recorded — it carries API keys.
+One file per day, oldest pruned once the folder passes 20 MB.
+
+**Help ▸ Reveal Log in Finder** opens it; **Help ▸ Delete Logs** empties it.
+
 ### Launching from the Dock or Finder
 
 A Dock, Finder, or Spotlight launch does **not** inherit your shell environment, so `PI_PATH`
