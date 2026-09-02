@@ -40,7 +40,7 @@ struct ContentView: View {
             let pool = ChatPool(store: store)
             self.pool = pool
             keys.start(
-                newSession: { startNewSession(with: pool) },
+                newSession: { agent in startNewSession(with: pool, using: agent) },
                 jump: { number in
                     guard let session = store.session(at: number) else { return }
                     pool.show(session, thenType: true)
@@ -62,7 +62,7 @@ struct ContentView: View {
         }
         .onChange(of: shortcuts.newSessionCount) { _, _ in
             guard let pool else { return }
-            startNewSession(with: pool)
+            startNewSession(with: pool, using: shortcuts.newSessionAgent)
         }
         .onChange(of: shortcuts.paletteCount) { _, _ in
             openPalette()
@@ -141,13 +141,13 @@ struct ContentView: View {
         chat.askToType()
     }
 
-    private func start(_ folder: URL) {
-        pool?.startNew(in: folder)
+    private func start(_ folder: URL, _ agent: Agent) {
+        pool?.startNew(in: folder, using: agent)
     }
 
-    private func startNewSession(with pool: ChatPool) {
-        guard let folder = FolderPicker.pick() else { return }
-        pool.startNew(in: folder)
+    private func startNewSession(with pool: ChatPool, using agent: Agent) {
+        guard let folder = FolderPicker.pick(for: agent) else { return }
+        pool.startNew(in: folder, using: agent)
     }
 
     private func show(_ saved: SavedSession) {

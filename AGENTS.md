@@ -26,13 +26,32 @@ where launchd can see it:
 launchctl setenv PI_PATH /path/to/pi
 ```
 
+**`ACP_PATH` is required for Claude sessions**, and only for those. It points at an ACP
+adapter — the app speaks the Agent Client Protocol, so any adapter that does the same would
+work, but the one this was built against is Claude's:
+
+```sh
+npm install -g @agentclientprotocol/claude-agent-acp
+export ACP_PATH=$(which claude-agent-acp)
+```
+
+Install it globally rather than into a project. The adapter is a `#!/usr/bin/env node`
+script, and the app prepends only the executable's own directory to `PATH` — a global install
+puts the adapter next to the node that runs it, which a `node_modules/.bin` does not. Get this
+wrong and the adapter dies with `env: node: No such file or directory`, which the app now
+reports verbatim.
+
+pi sessions do not read `ACP_PATH`, and Claude sessions do not read `PI_PATH`. Either can be
+unset if you only use the other.
+
 **Tests need `TEST_RUNNER_PI_PATH`, not `PI_PATH`.** `xcodebuild` does not forward shell
 environment to the test host; it forwards variables prefixed with `TEST_RUNNER_`, stripping
 the prefix. Get this wrong and the integration tests silently *skip* while the run still
 reports success.
 
 ```sh
-TEST_RUNNER_PI_PATH=/path/to/pi xcodebuild -project PiUI.xcodeproj -scheme PiUI test
+TEST_RUNNER_PI_PATH=/path/to/pi TEST_RUNNER_ACP_PATH=/path/to/claude-agent-acp \
+  xcodebuild -project PiUI.xcodeproj -scheme PiUI test
 ```
 
 ## Code style

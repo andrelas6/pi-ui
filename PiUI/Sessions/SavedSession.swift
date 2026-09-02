@@ -9,6 +9,15 @@ struct SavedSession: Codable, Identifiable, Hashable, Sendable {
     var createdAt: Date
     var lastOpenedAt: Date
 
+    /// Absent in indexes written before Claude sessions existed, and every one of those
+    /// was pi.
+    var agent: Agent?
+
+    var runs: Agent {
+        get { agent ?? .pi }
+        set { agent = newValue }
+    }
+
     var title: String {
         if let name, !name.isEmpty { return name }
         return folder.lastPathComponent

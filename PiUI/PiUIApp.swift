@@ -30,10 +30,15 @@ struct PiUIApp: App {
         .commands {
 
             CommandGroup(after: .newItem) {
-                Button("New Session…") {
-                    shortcuts.askForNewSession()
+                Button(Agent.pi.newSessionTitle) {
+                    shortcuts.askForNewSession(.pi)
                 }
                 .keyboardShortcut("t", modifiers: .control)
+
+                Button(Agent.claude.newSessionTitle) {
+                    shortcuts.askForNewSession(.claude)
+                }
+                .keyboardShortcut("t", modifiers: [.control, .shift])
             }
 
             CommandGroup(after: .toolbar) {

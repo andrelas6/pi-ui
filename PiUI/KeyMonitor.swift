@@ -7,7 +7,7 @@ final class KeyMonitor {
     private var handle: Any?
 
     func start(
-        newSession: @escaping () -> Void,
+        newSession: @escaping (Agent) -> Void,
         jump: @escaping (Int) -> Void,
         interrupt: @escaping () -> Void = {},
         answer: @escaping (String) -> Bool = { _ in false },
@@ -21,7 +21,12 @@ final class KeyMonitor {
 
             if held == .control, typed.lowercased() == "t" {
                 // Run after this event finishes, so the panel is not opened mid-dispatch.
-                DispatchQueue.main.async(execute: newSession)
+                DispatchQueue.main.async { newSession(.pi) }
+                return nil
+            }
+
+            if held == [.control, .shift], typed.lowercased() == "t" {
+                DispatchQueue.main.async { newSession(.claude) }
                 return nil
             }
 

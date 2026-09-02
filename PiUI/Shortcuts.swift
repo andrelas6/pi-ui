@@ -7,10 +7,12 @@ import Observation
 @Observable
 final class Shortcuts {
     private(set) var newSessionCount = 0
+    private(set) var newSessionAgent: Agent = .pi
     private(set) var paletteCount = 0
     var jumpTo: Int?
 
-    func askForNewSession() {
+    func askForNewSession(_ agent: Agent = .pi) {
+        newSessionAgent = agent
         newSessionCount += 1
     }
 

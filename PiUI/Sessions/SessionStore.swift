@@ -25,11 +25,12 @@ final class SessionStore {
         return folder.appending(path: "sessions.json")
     }
 
-    func remember(id: String, folder: URL, file sessionFile: URL?) {
+    func remember(id: String, folder: URL, file sessionFile: URL?, agent: Agent = .pi) {
         if let index = sessions.firstIndex(where: { $0.id == id }) {
             sessions[index].folder = folder
             sessions[index].file = sessionFile
             sessions[index].lastOpenedAt = .now
+            sessions[index].runs = agent
             if let sessionFile, FileManager.default.fileExists(atPath: sessionFile.path) {
                 sessions[index].everSaved = true
             }
@@ -43,7 +44,8 @@ final class SessionStore {
                     file: sessionFile,
                     everSaved: onDisk,
                     createdAt: .now,
-                    lastOpenedAt: .now
+                    lastOpenedAt: .now,
+                    agent: agent
                 )
             )
         }

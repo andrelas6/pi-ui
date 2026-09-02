@@ -27,6 +27,26 @@ export PI_PATH=/path/to/pi
 
 Add the `export` line to your `~/.zshrc` so it survives new terminals.
 
+### Claude sessions
+
+Sessions run on **pi** or on **Claude**, chosen when you start one — the `+` button in the
+sidebar offers both, as does the File menu (⌃T for pi, ⇧⌃T for Claude). A session remembers
+which agent it belongs to and reopens on the same one.
+
+Claude is driven over the [Agent Client Protocol](https://agentclientprotocol.com), so it
+needs an adapter. Install it **globally**, so it sits beside the node that runs it:
+
+```sh
+npm install -g @agentclientprotocol/claude-agent-acp
+export ACP_PATH=$(which claude-agent-acp)
+```
+
+It signs in with whatever Claude Code is already signed in as. `ACP_PATH` is only read when
+you start a Claude session, so you can leave it unset if you only use pi.
+
+Model and thinking-level pickers, the ⌘K command palette and token stats are pi-only for now;
+a Claude session simply renders without them.
+
 ### Launching from the Dock or Finder
 
 A Dock, Finder, or Spotlight launch does **not** inherit your shell environment, so `PI_PATH`
