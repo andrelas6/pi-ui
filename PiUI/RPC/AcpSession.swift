@@ -42,7 +42,12 @@ actor AcpSession {
     func start() async throws {
         guard child == nil else { return }
 
-        let child = AgentProcess(executable: executable, arguments: [], folder: folder)
+        let child = AgentProcess(
+            executable: executable,
+            arguments: [],
+            folder: folder,
+            channel: "claude:\(folder.lastPathComponent)"
+        )
 
         do {
             try await child.start()
@@ -61,7 +66,7 @@ actor AcpSession {
 
     @discardableResult
     func request(_ method: String, _ params: JSONValue = .object([:])) async throws -> JSONValue {
-        guard let child else { throw try await failure() }
+        guard let child else { throw await failure() }
 
         counter += 1
         let id = counter
@@ -84,7 +89,7 @@ actor AcpSession {
     }
 
     func notify(_ method: String, _ params: JSONValue = .object([:])) async throws {
-        guard let child else { throw try await failure() }
+        guard let child else { throw await failure() }
         try await child.write(.object([
             "jsonrpc": .string("2.0"),
             "method": .string(method),
@@ -95,7 +100,7 @@ actor AcpSession {
     /// Answering a request the agent made of us. The id comes back exactly as it arrived —
     /// JSON-RPC lets it be a number or a string.
     func respond(to id: JSONValue, result: JSONValue) async throws {
-        guard let child else { throw try await failure() }
+        guard let child else { throw await failure() }
         try await child.write(.object([
             "jsonrpc": .string("2.0"),
             "id": id,
@@ -135,7 +140,7 @@ actor AcpSession {
     }
 
     private func finish() async {
-        let reason = (try? await failure()) ?? Failure.notRunning
+        let reason = await failure()
         for waiter in waiting.values {
             waiter.resume(throwing: reason)
         }
@@ -144,18 +149,17 @@ actor AcpSession {
         child = nil
     }
 
-    /// An adapter that dies on launch — a missing node, a bad path — says why on stderr.
-    /// Repeating "not running" would throw that away, which is the whole diagnosis.
-    private func failure() async throws -> Failure {
+    /// An adapter that dies on launch — a missing node, a bad path — says why on stderr, and
+    /// repeating "not running" would throw that diagnosis away.
+    ///
+    /// Only when it actually died, though. The adapter writes ordinary progress to stderr
+    /// too, so treating any stderr as a reason reported a healthy session as a failed one.
+    private func failure() async -> Failure {
         guard let child else { return .notRunning }
+        guard let status = await child.exitStatus, status != 0 else { return .notRunning }
+
         let said = await child.stderrText
-        if !said.isEmpty {
-            return .couldNotStart(said)
-        }
-        if let status = await child.exitStatus {
-            return .couldNotStart("The adapter exited with status \(status).")
-        }
-        return .notRunning
+        return .couldNotStart(said.isEmpty ? "The adapter exited with status \(status)." : said)
     }
 
     private static func failure(from failure: AgentProcess.Failure, said: String) -> Failure {
