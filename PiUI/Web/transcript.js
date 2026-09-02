@@ -185,7 +185,7 @@
 
         var hint = document.createElement("span");
         hint.className = "hint";
-        hint.textContent = "⌘Y allow · ⌘R deny";
+        hint.textContent = "⌘Y allow · ⇧⌘Y always · ⌘R deny";
         choices.appendChild(hint);
     }
 

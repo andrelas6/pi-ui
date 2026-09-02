@@ -32,6 +32,14 @@ final class KeyMonitor {
                 return nil
             }
 
+            // Shift makes this its own combination: `held` is compared exactly, so
+            // Cmd-Shift-Y never reaches the plain Cmd-Y branch below.
+            if held == [.command, .shift],
+               typed.lowercased() == "y",
+               answer(ChatMessage.Request.always) {
+                return nil
+            }
+
             if held == .command, typed.lowercased() == "y", answer(ChatMessage.Request.allow) {
                 return nil
             }
