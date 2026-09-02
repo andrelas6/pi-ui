@@ -168,7 +168,7 @@ struct ConversationView: View {
                 .help("How hard the model thinks before answering")
             }
 
-            if chat.isStreaming {
+            if chat.isStreaming, chat.agent == .pi {
                 Picker("", selection: Binding(
                     get: { chat.queueAsFollowUp },
                     set: { chat.queueAsFollowUp = $0 }
@@ -213,7 +213,8 @@ struct ConversationView: View {
     }
 
     private var placeholder: String {
-        guard chat.isStreaming else { return "Ask pi…" }
+        guard chat.isStreaming else { return "Ask \(chat.agent.name)…" }
+        guard chat.agent == .pi else { return "Send — it joins the queue…" }
         return chat.queueAsFollowUp ? "Queue for when it finishes…" : "Steer the current turn…"
     }
 

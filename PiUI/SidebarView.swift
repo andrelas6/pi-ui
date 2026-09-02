@@ -182,7 +182,7 @@ private struct SessionRow: View {
                         .frame(height: 22)
 
                     HStack(spacing: 4) {
-                        Text(session.runs.name.lowercased())
+                        Text(session.agent.name.lowercased())
                         if let branch {
                             Text("·")
                             Image(systemName: "arrow.triangle.branch")

@@ -16,7 +16,7 @@ actor ClaudeAgent: AgentSession {
     private let folder: URL
 
     private var translator = AcpEvents()
-    private var sessionId = ""
+    private var sessionId: String?
     private var waiting: [String: Waiting] = [:]
     private var askCounter = 0
     private var turnsInFlight = 0
@@ -58,7 +58,6 @@ actor ClaudeAgent: AgentSession {
             load["sessionId"] = .string(existing)
             try await session.request("session/load", .object(load))
             sessionId = existing
-            // The replay is finished, so whatever it left open has to be closed.
             for event in translator.closeMessage() {
                 publish.yield(event)
             }
@@ -102,17 +101,26 @@ actor ClaudeAgent: AgentSession {
         }
 
         try await session.request("session/prompt", .object([
-            "sessionId": .string(sessionId),
+            "sessionId": .string(try currentSessionId()),
             "prompt": .array([.object(["type": .string("text"), "text": .string(text)])]),
         ]))
     }
 
     func abort() async throws {
-        try await session.notify("session/cancel", .object(["sessionId": .string(sessionId)]))
+        try await session.notify("session/cancel", .object(["sessionId": .string(try currentSessionId())]))
     }
 
-    /// Nothing queues on our side, so there is never anything to hand back.
+    /// Queued prompts are the adapter's to hold, so there is nothing here to hand back.
     func clearQueue() async throws -> [String] { [] }
+
+    /// Everything after `open` needs the id it returned; without one there is no session to
+    /// talk to and saying so beats sending a request that cannot work.
+    private func currentSessionId() throws -> String {
+        guard let sessionId else {
+            throw AcpSession.Failure.notRunning
+        }
+        return sessionId
+    }
 
     func answer(id: String, choice: PermissionChoice) async throws {
         guard let pending = waiting.removeValue(forKey: id) else { return }
@@ -128,7 +136,8 @@ actor ClaudeAgent: AgentSession {
         ]))
     }
 
-    /// ACP asks only for permission, never for free text, so there is nothing this can be.
+    /// ACP can elicit free text, but nothing here raises it yet, so a typed answer has
+    /// nowhere to go and the request is declined rather than half-answered.
     func answer(id: String, value: String) async throws {
         try await dismiss(id: id)
     }
@@ -175,14 +184,14 @@ actor ClaudeAgent: AgentSession {
     }
 
     private func finish() {
-        for id in waiting.keys {
-            waiting.removeValue(forKey: id)
-        }
+        waiting.removeAll()
         publish.finish()
     }
 
     /// Options are matched on their declared kind rather than their id, which is the
-    /// adapter's to name.
+    /// adapter's to name. A choice only ever falls back within its own intent: picking the
+    /// first option when nothing matches would answer a Deny with the adapter's Allow,
+    /// which is the order they arrive in.
     static func option(for choice: PermissionChoice, among options: [JSONValue]) -> String? {
         let wanted: [String]
         switch choice {
@@ -197,6 +206,6 @@ actor ClaudeAgent: AgentSession {
                 return id
             }
         }
-        return options.first?["optionId"]?.string
+        return nil
     }
 }
