@@ -52,7 +52,7 @@ struct PrimaryButton: View {
                     Image(systemName: icon).font(.system(size: 13, weight: .medium))
                 }
             }
-            .foregroundStyle(Palette.neutral(100))
+            .foregroundStyle(Palette.onAccent)
             .padding(.horizontal, Space.three)
             .frame(height: 24)
             .background(enabled ? Palette.accent : Palette.neutral(400))

@@ -14,7 +14,15 @@ struct TranscriptPageTests {
 
     @Test func inlinesTheStylesheet() {
         #expect(TranscriptPageTests.page.contains(".msg"))
-        #expect(TranscriptPageTests.page.contains("prefers-color-scheme"))
+        #expect(TranscriptPageTests.page.contains(":root {"))
+    }
+
+    /// Both themes ship in the one document, so the transcript follows the appearance
+    /// without being rebuilt — the page is built once at launch.
+    @Test func inlinesBothThemes() {
+        #expect(TranscriptPageTests.page.contains("--color-bg: \(Theme.light.bg);"))
+        #expect(TranscriptPageTests.page.contains("--color-bg: \(Theme.dark.bg);"))
+        #expect(TranscriptPageTests.page.contains("@media (prefers-color-scheme: dark)"))
     }
 
     @Test func inlinesTheRenderScript() {
