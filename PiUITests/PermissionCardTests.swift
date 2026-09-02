@@ -148,4 +148,19 @@ struct PermissionCardTests {
         #expect(chat.messages[0].done)
         #expect(chat.messages[0].request?.answer == "")
     }
+
+    /// The agent blocks until a permission is answered, so a reply that cannot be delivered
+    /// has to surface. Silence here hangs the turn with nothing on screen.
+    @Test func saysSoWhenThereIsNoSessionToAnswer() throws {
+        let chat = newChat()
+        chat.handle(try event(#"""
+        {"type":"extension_ui_request","id":"u1","method":"confirm","title":"bash","message":"ls"}
+        """#))
+
+        #expect(chat.ask != nil)
+        chat.answerRequest(id: "u1", choice: ChatMessage.Request.allow)
+
+        #expect(chat.ask == nil)
+        #expect(chat.problem?.isEmpty == false)
+    }
 }

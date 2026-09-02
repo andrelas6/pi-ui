@@ -1,5 +1,7 @@
 import Foundation
 
+/// pi's own JSONL protocol: flat objects carrying a `type`, and a `response` matched back to
+/// the request that asked for it. The subprocess underneath is an `AgentProcess`.
 actor PiSession {
     enum Failure: Error, LocalizedError {
         case notRunning
@@ -18,13 +20,10 @@ actor PiSession {
     private let executable: URL
     private let folder: URL
 
-    private var process: Process?
-    private var input: FileHandle?
-    private var buffer = LineBuffer()
+    private var child: AgentProcess?
     private var waiting: [String: CheckedContinuation<JSONValue, Error>] = [:]
     private var counter = 0
     private var readTask: Task<Void, Never>?
-    private var errorOutput = ""
 
     let events: AsyncStream<JSONValue>
     private let publish: AsyncStream<JSONValue>.Continuation
@@ -35,58 +34,33 @@ actor PiSession {
         (events, publish) = AsyncStream.makeStream()
     }
 
-    var isRunning: Bool {
-        process?.isRunning ?? false
-    }
+    func start(arguments: [String] = []) async throws {
+        guard child == nil else { return }
 
-    var stderrText: String {
-        errorOutput
-    }
-
-    func start(arguments: [String] = []) throws {
-        guard process == nil else { return }
-
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = ["--mode", "rpc"] + arguments
-        process.currentDirectoryURL = folder
-        process.environment = childEnvironment()
-
-        let toPi = Pipe()
-        let fromPi = Pipe()
-        let errors = Pipe()
-        process.standardInput = toPi
-        process.standardOutput = fromPi
-        process.standardError = errors
+        let child = AgentProcess(
+            executable: executable,
+            arguments: ["--mode", "rpc"] + arguments,
+            folder: folder
+        )
 
         do {
-            try process.run()
-        } catch {
-            throw Failure.couldNotStart(error.localizedDescription)
+            try await child.start()
+        } catch let failure as AgentProcess.Failure {
+            throw Self.failure(from: failure, said: await child.stderrText)
         }
 
-        self.process = process
-        self.input = toPi.fileHandleForWriting
-
-        let output = fromPi.fileHandleForReading
+        self.child = child
         readTask = Task { [weak self] in
-            for await chunk in Self.chunks(from: output) {
-                await self?.handle(chunk)
+            for await value in child.lines {
+                await self?.route(value)
             }
             await self?.finish()
-        }
-
-        let errorHandle = errors.fileHandleForReading
-        Task { [weak self] in
-            for await chunk in Self.chunks(from: errorHandle) {
-                await self?.collectError(chunk)
-            }
         }
     }
 
     @discardableResult
     func send(_ type: String, fields: [String: JSONValue] = [:]) async throws -> JSONValue {
-        guard let input else { throw Failure.notRunning }
+        guard let child else { throw Failure.notRunning }
 
         counter += 1
         let id = "r\(counter)"
@@ -94,42 +68,34 @@ actor PiSession {
         payload["type"] = .string(type)
         payload["id"] = .string(id)
 
-        let line = try JSONEncoder().encode(JSONValue.object(payload))
-
         return try await withCheckedThrowingContinuation { continuation in
             waiting[id] = continuation
-            do {
-                try input.write(contentsOf: line)
-                try input.write(contentsOf: Data([0x0A]))
-            } catch {
-                waiting.removeValue(forKey: id)
-                continuation.resume(throwing: error)
+            Task {
+                do {
+                    try await child.write(.object(payload))
+                } catch {
+                    resume(id, throwing: error)
+                }
             }
         }
     }
 
     /// Extension UI replies carry the request's own id and get no response back,
     /// so they cannot go through `send`.
-    func post(_ fields: [String: JSONValue]) throws {
-        guard let input else { throw Failure.notRunning }
-        let line = try JSONEncoder().encode(JSONValue.object(fields))
-        try input.write(contentsOf: line)
-        try input.write(contentsOf: Data([0x0A]))
+    func post(_ fields: [String: JSONValue]) async throws {
+        guard let child else { throw Failure.notRunning }
+        try await child.write(.object(fields))
     }
 
-    func stop() {
+    func stop() async {
         readTask?.cancel()
         readTask = nil
-        try? input?.close()
-        process?.terminate()
+        await child?.stop()
         finish()
     }
 
-    private func handle(_ chunk: Data) {
-        for line in buffer.take(chunk) {
-            guard let value = try? JSONDecoder().decode(JSONValue.self, from: line) else { continue }
-            route(value)
-        }
+    private func resume(_ id: String, throwing error: Error) {
+        waiting.removeValue(forKey: id)?.resume(throwing: error)
     }
 
     private func route(_ value: JSONValue) {
@@ -142,46 +108,21 @@ actor PiSession {
         }
     }
 
-    private func collectError(_ chunk: Data) {
-        errorOutput += String(decoding: chunk, as: UTF8.self)
-    }
-
     private func finish() {
         for waiter in waiting.values {
             waiter.resume(throwing: Failure.notRunning)
         }
         waiting.removeAll()
         publish.finish()
-        process = nil
-        input = nil
+        child = nil
     }
 
-    private func childEnvironment() -> [String: String] {
-        Self.environment(for: executable, base: ProcessInfo.processInfo.environment)
-    }
-
-    /// pi's shebang runs `env node`, and node sits in pi's own bin directory. A GUI app
-    /// inherits a PATH with neither on it, so prepend that directory. Do not resolve the
-    /// symlink first — that lands in the package, where node is not.
-    static func environment(for executable: URL, base: [String: String]) -> [String: String] {
-        var environment = base
-        let binDirectory = executable.deletingLastPathComponent().path
-        let inherited = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
-        environment["PATH"] = binDirectory + ":" + inherited
-        return environment
-    }
-
-    private static func chunks(from handle: FileHandle) -> AsyncStream<Data> {
-        AsyncStream { continuation in
-            handle.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    handle.readabilityHandler = nil
-                    continuation.finish()
-                } else {
-                    continuation.yield(data)
-                }
-            }
+    private static func failure(from failure: AgentProcess.Failure, said: String) -> Failure {
+        switch failure {
+        case .notRunning:
+            .notRunning
+        case .couldNotStart(let reason):
+            .couldNotStart(said.isEmpty ? reason : said)
         }
     }
 }

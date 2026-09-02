@@ -30,7 +30,7 @@ final class SessionStore {
             sessions[index].folder = folder
             sessions[index].file = sessionFile
             sessions[index].lastOpenedAt = .now
-            sessions[index].runs = agent
+            sessions[index].agent = agent
             if let sessionFile, FileManager.default.fileExists(atPath: sessionFile.path) {
                 sessions[index].everSaved = true
             }

@@ -31,7 +31,10 @@ final class Chat {
     private(set) var openSessionId: String?
 
     private let store: SessionStore
-    private var agent: (any AgentSession)?
+    private var session: (any AgentSession)?
+    /// Which agent this session runs on. The composer reads it: ACP has no steering, so the
+    /// controls that promise it belong to pi alone.
+    private(set) var agent: Agent = .pi
     /// Model pickers, thinking levels, commands and stats are pi-only for now, and those
     /// methods reach for this directly. Nil for a Claude session, so they no-op.
     private var pi: PiSession?
@@ -42,7 +45,7 @@ final class Chat {
         self.store = store
     }
 
-    var isOpen: Bool { agent != nil }
+    var isOpen: Bool { session != nil }
 
     /// Reading a working copy shells out to git three times, so it happens when a
     /// session opens and when a turn lands, not on every keystroke.
@@ -75,10 +78,10 @@ final class Chat {
     /// Write the name to the index for display, and to pi so `pi -r` agrees.
     func rename(_ id: String, to name: String) {
         store.rename(id, to: name)
-        guard id == openSessionId, let agent else { return }
+        guard id == openSessionId, let session else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        Task { try? await agent.rename(to: trimmed) }
+        Task { try? await session.rename(to: trimmed) }
     }
 
     func closeIfOpen(_ id: String) {
@@ -103,6 +106,7 @@ final class Chat {
             return
         }
 
+        agent = kind
         pi = (started as? PiAgent)?.pi
         self.folder = folder
         problem = nil
@@ -116,7 +120,7 @@ final class Chat {
         Task {
             do {
                 let opened = try await started.open(sessionId: sessionId)
-                self.agent = started
+                self.session = started
                 // Settle what the session reported before listening, so replayed history
                 // is built against the right model name rather than a blank one.
                 await self.adopt(opened, folder: folder, kind: kind)
@@ -162,7 +166,7 @@ final class Chat {
 
     func send(_ text: String) {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty, let agent else { return }
+        guard !message.isEmpty, let session else { return }
 
         notice = nil
 
@@ -170,7 +174,7 @@ final class Chat {
             let followUp = queueAsFollowUp
             Task {
                 do {
-                    try await agent.steer(message, followUp: followUp)
+                    try await session.steer(message, followUp: followUp)
                 } catch {
                     problem = error.localizedDescription
                 }
@@ -181,7 +185,7 @@ final class Chat {
         isStreaming = true
         Task {
             do {
-                try await agent.prompt(message)
+                try await session.prompt(message)
             } catch {
                 problem = error.localizedDescription
                 isStreaming = false
@@ -191,17 +195,17 @@ final class Chat {
 
     /// Abort alone lets queued messages carry on, so clear the queue first.
     func stopEverything() {
-        guard let agent else { return }
+        guard let session else { return }
         Task {
-            recovered = (try? await agent.clearQueue()) ?? []
-            try? await agent.abort()
+            recovered = (try? await session.clearQueue()) ?? []
+            try? await session.abort()
         }
     }
 
     func clearQueue() {
-        guard let agent else { return }
+        guard let session else { return }
         Task {
-            recovered = (try? await agent.clearQueue()) ?? []
+            recovered = (try? await session.clearQueue()) ?? []
         }
     }
 
@@ -222,20 +226,20 @@ final class Chat {
     }
 
     func stop() {
-        guard let agent else { return }
-        Task { try? await agent.abort() }
+        guard let session else { return }
+        Task { try? await session.abort() }
     }
 
     func close() {
         eventTask?.cancel()
         eventTask = nil
-        if let agent {
-            Task { await agent.stop() }
+        if let session {
+            Task { await session.stop() }
         }
         if let openSessionId {
             store.markStopped(openSessionId)
         }
-        agent = nil
+        session = nil
         pi = nil
         folder = nil
         openSessionId = nil
@@ -416,12 +420,23 @@ final class Chat {
         }
     }
 
+    /// The agent blocks until a permission request is answered, so a reply that never
+    /// lands hangs the turn with nothing on screen. Say it out loud instead.
     private func respond(
         _ work: @escaping @Sendable (any AgentSession) async throws -> Void
     ) {
         ask = nil
-        guard let agent else { return }
-        Task { try? await work(agent) }
+        guard let running = session else {
+            problem = "There is no session open to answer that."
+            return
+        }
+        Task {
+            do {
+                try await work(running)
+            } catch {
+                problem = "Could not answer the request: \(error.localizedDescription)"
+            }
+        }
     }
 
     /// pi ships no permission prompts, so the app brings its own gate.

@@ -80,9 +80,25 @@ struct PermissionChoiceTests {
         #expect(ClaudeAgent.option(for: .deny, among: offered) == "r")
     }
 
-    @Test func takesWhateverIsThereWhenNoKindMatches() throws {
+    /// The adapter lists allow first, so falling back to "whatever is there" answered a
+    /// Deny with its Allow. A choice may only fall back within its own intent.
+    @Test func neverAnswersDenyWithAnAllow() throws {
+        let offered = try options(live)
+        let chosen = ClaudeAgent.option(for: .deny, among: offered)
+        #expect(chosen == "reject")
+        #expect(chosen != "allow-once")
+
+        let noReject = try options(#"[{"optionId":"a","kind":"allow_once"},{"optionId":"b","kind":"allow_always"}]"#)
+        #expect(ClaudeAgent.option(for: .deny, among: noReject) == nil)
+    }
+
+    /// Nothing recognisable means nothing is chosen; the caller then cancels, which is the
+    /// safe outcome for all three choices.
+    @Test func choosesNothingWhenNoKindMatches() throws {
         let offered = try options(#"[{"optionId":"only","kind":"something_new"}]"#)
-        #expect(ClaudeAgent.option(for: .allow, among: offered) == "only")
+        #expect(ClaudeAgent.option(for: .allow, among: offered) == nil)
+        #expect(ClaudeAgent.option(for: .always, among: offered) == nil)
+        #expect(ClaudeAgent.option(for: .deny, among: offered) == nil)
     }
 
     @Test func hasNothingToPickFromAnEmptyList() {
@@ -108,7 +124,7 @@ struct SavedSessionAgentTests {
         """#)
 
         #expect(old.sessions.count == 1)
-        #expect(old.sessions[0].runs == .pi)
+        #expect(old.sessions[0].agent == .pi)
     }
 
     @Test func remembersWhichAgentASessionRunsOn() throws {
@@ -116,8 +132,8 @@ struct SavedSessionAgentTests {
         index.remember(id: "c", folder: URL(fileURLWithPath: "/tmp/a"), file: nil, agent: .claude)
         index.remember(id: "p", folder: URL(fileURLWithPath: "/tmp/a"), file: nil, agent: .pi)
 
-        #expect(index.session("c")?.runs == .claude)
-        #expect(index.session("p")?.runs == .pi)
+        #expect(index.session("c")?.agent == .claude)
+        #expect(index.session("p")?.agent == .pi)
     }
 
     /// Reopening has to reach for the same agent after a relaunch, so it must survive
@@ -128,13 +144,13 @@ struct SavedSessionAgentTests {
         let first = SessionStore(file: file)
         first.remember(id: "c", folder: URL(fileURLWithPath: "/tmp/a"), file: nil, agent: .claude)
 
-        #expect(SessionStore(file: file).session("c")?.runs == .claude)
+        #expect(SessionStore(file: file).session("c")?.agent == .claude)
     }
 
     @Test func defaultsToPiWhenNobodySaid() throws {
         let index = try store("[]")
         index.remember(id: "x", folder: URL(fileURLWithPath: "/tmp/a"), file: nil)
-        #expect(index.session("x")?.runs == .pi)
+        #expect(index.session("x")?.agent == .pi)
     }
 }
 

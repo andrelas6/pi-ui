@@ -33,7 +33,7 @@ final class ChatPool {
 
         let chat = make()
         current = chat
-        chat.open(saved.folder, using: saved.runs, sessionId: saved.id, thenType: thenType)
+        chat.open(saved.folder, using: saved.agent, sessionId: saved.id, thenType: thenType)
     }
 
     private func make() -> Chat {

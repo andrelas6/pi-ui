@@ -59,9 +59,9 @@ struct PiSessionTests {
     }
 }
 
-struct PiEnvironmentTests {
+struct AgentEnvironmentTests {
     @Test func putsPiBinDirectoryFirstOnThePath() {
-        let environment = PiSession.environment(
+        let environment = AgentProcess.environment(
             for: URL(fileURLWithPath: "/opt/tools/bin/pi"),
             base: ["PATH": "/usr/bin:/bin"]
         )
@@ -69,7 +69,7 @@ struct PiEnvironmentTests {
     }
 
     @Test func suppliesAPathWhenTheParentHasNone() {
-        let environment = PiSession.environment(
+        let environment = AgentProcess.environment(
             for: URL(fileURLWithPath: "/opt/tools/bin/pi"),
             base: [:]
         )
@@ -77,7 +77,7 @@ struct PiEnvironmentTests {
     }
 
     @Test func keepsTheRestOfTheEnvironment() {
-        let environment = PiSession.environment(
+        let environment = AgentProcess.environment(
             for: URL(fileURLWithPath: "/opt/tools/bin/pi"),
             base: ["PATH": "/usr/bin", "HOME": "/Users/someone"]
         )
