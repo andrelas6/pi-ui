@@ -31,7 +31,10 @@ final class Chat {
     private(set) var openSessionId: String?
 
     private let store: SessionStore
-    private var session: PiSession?
+    private var agent: (any AgentSession)?
+    /// Model pickers, thinking levels, commands and stats are pi-only for now, and those
+    /// methods reach for this directly. Nil for a Claude session, so they no-op.
+    private var pi: PiSession?
     private var eventTask: Task<Void, Never>?
     private var streamingId: String?
 
@@ -39,7 +42,7 @@ final class Chat {
         self.store = store
     }
 
-    var isOpen: Bool { session != nil }
+    var isOpen: Bool { agent != nil }
 
     /// Reading a working copy shells out to git three times, so it happens when a
     /// session opens and when a turn lands, not on every keystroke.
@@ -60,8 +63,8 @@ final class Chat {
     /// Skills, templates and extension commands are discovered by pi at startup, so
     /// this only has to ask once per session.
     func loadCommands() async {
-        guard commands.isEmpty, let session else { return }
-        guard let response = try? await session.send("get_commands") else { return }
+        guard commands.isEmpty, let pi else { return }
+        guard let response = try? await pi.send("get_commands") else { return }
         commands = PiCommand.all(from: response)
     }
 
@@ -72,12 +75,10 @@ final class Chat {
     /// Write the name to the index for display, and to pi so `pi -r` agrees.
     func rename(_ id: String, to name: String) {
         store.rename(id, to: name)
-        guard id == openSessionId, let session else { return }
+        guard id == openSessionId, let agent else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        Task {
-            try? await session.send("set_session_name", fields: ["name": .string(trimmed)])
-        }
+        Task { try? await agent.rename(to: trimmed) }
     }
 
     func closeIfOpen(_ id: String) {
@@ -86,18 +87,23 @@ final class Chat {
         messages = []
     }
 
-    func open(_ folder: URL, sessionId: String? = nil, thenType: Bool = false) {
+    func open(
+        _ folder: URL,
+        using kind: Agent = .pi,
+        sessionId: String? = nil,
+        thenType: Bool = false
+    ) {
         close()
 
-        let executable: URL
+        let started: any AgentSession
         do {
-            executable = try PiPath.fromEnvironment()
+            started = try Self.make(kind, folder: folder)
         } catch {
             problem = error.localizedDescription
             return
         }
 
-        let session = PiSession(executable: executable, folder: folder)
+        pi = (started as? PiAgent)?.pi
         self.folder = folder
         problem = nil
         notice = nil
@@ -109,53 +115,62 @@ final class Chat {
 
         Task {
             do {
-                let arguments = Self.gateArguments + (sessionId.map { ["--session-id", $0] } ?? [])
-                try await session.start(arguments: arguments)
-                self.session = session
-                self.listen(to: session)
-                try await self.rememberSession(session, folder: folder)
+                let opened = try await started.open(sessionId: sessionId)
+                self.agent = started
+                // Settle what the session reported before listening, so replayed history
+                // is built against the right model name rather than a blank one.
+                await self.adopt(opened, folder: folder, kind: kind)
+                self.listen(to: started)
                 // The composer only exists once the session is open, so ask from here.
                 if thenType { self.askToType() }
             } catch {
                 self.problem = error.localizedDescription
+                self.pi = nil
             }
         }
     }
 
-    private func rememberSession(_ session: PiSession, folder: URL) async throws {
-        let state = try await session.send("get_state")
-        guard let id = state["data"]?["sessionId"]?.string else { return }
-        let file = state["data"]?["sessionFile"]?.string.map { URL(fileURLWithPath: $0) }
-        openSessionId = id
-        store.remember(id: id, folder: folder, file: file)
-        store.markRunning(id)
+    private static func make(_ kind: Agent, folder: URL) throws -> any AgentSession {
+        switch kind {
+        case .pi:
+            PiAgent(
+                executable: try PiPath.fromEnvironment(),
+                folder: folder,
+                arguments: gateArguments
+            )
+        case .claude:
+            ClaudeAgent(executable: try AcpPath.fromEnvironment(), folder: folder)
+        }
+    }
+
+    /// A Claude session replays its history as ordinary events, so `messages` may already
+    /// be filling in by the time this runs; only take what the session handed back.
+    private func adopt(_ opened: OpenedSession, folder: URL, kind: Agent) async {
+        openSessionId = opened.id
+        store.remember(id: opened.id, folder: folder, file: opened.file, agent: kind)
+        store.markRunning(opened.id)
         store.refreshBranches()
         refreshFiles()
-        modelName = state["data"]?["model"]?["name"]?.string ?? ""
-        thinkingLevel = state["data"]?["thinkingLevel"]?.string ?? ""
-        try await loadHistory(session)
+        modelName = opened.modelName
+        thinkingLevel = opened.thinkingLevel
+        if !opened.messages.isEmpty {
+            messages = opened.messages
+        }
         await refreshThinkingLevels()
         await refreshStats()
     }
 
-    /// Reopening a session shows what was said before, not an empty pane.
-    private func loadHistory(_ session: PiSession) async throws {
-        let response = try await session.send("get_messages")
-        guard let stored = response["data"]?["messages"]?.array, !stored.isEmpty else { return }
-        messages = History.messages(from: stored)
-    }
-
     func send(_ text: String) {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty, let session else { return }
+        guard !message.isEmpty, let agent else { return }
 
         notice = nil
 
         if isStreaming {
-            let command = queueAsFollowUp ? "follow_up" : "steer"
+            let followUp = queueAsFollowUp
             Task {
                 do {
-                    try await session.send(command, fields: ["message": .string(message)])
+                    try await agent.steer(message, followUp: followUp)
                 } catch {
                     problem = error.localizedDescription
                 }
@@ -166,7 +181,7 @@ final class Chat {
         isStreaming = true
         Task {
             do {
-                try await session.send("prompt", fields: ["message": .string(message)])
+                try await agent.prompt(message)
             } catch {
                 problem = error.localizedDescription
                 isStreaming = false
@@ -176,19 +191,17 @@ final class Chat {
 
     /// Abort alone lets queued messages carry on, so clear the queue first.
     func stopEverything() {
-        guard let session else { return }
+        guard let agent else { return }
         Task {
-            let cleared = try? await session.send("clear_queue")
-            recovered = Self.queued(cleared?["data"])
-            try? await session.send("abort")
+            recovered = (try? await agent.clearQueue()) ?? []
+            try? await agent.abort()
         }
     }
 
     func clearQueue() {
-        guard let session else { return }
+        guard let agent else { return }
         Task {
-            let cleared = try? await session.send("clear_queue")
-            recovered = Self.queued(cleared?["data"])
+            recovered = (try? await agent.clearQueue()) ?? []
         }
     }
 
@@ -202,36 +215,37 @@ final class Chat {
         return text
     }
 
-    static func queued(_ data: JSONValue?) -> [String] {
+    nonisolated static func queued(_ data: JSONValue?) -> [String] {
         let steering = data?["steering"]?.array?.compactMap(\.string) ?? []
         let followUp = data?["followUp"]?.array?.compactMap(\.string) ?? []
         return steering + followUp
     }
 
     func stop() {
-        guard let session else { return }
-        Task { try? await session.send("abort") }
+        guard let agent else { return }
+        Task { try? await agent.abort() }
     }
 
     func close() {
         eventTask?.cancel()
         eventTask = nil
-        if let session {
-            Task { await session.stop() }
+        if let agent {
+            Task { await agent.stop() }
         }
         if let openSessionId {
             store.markStopped(openSessionId)
         }
-        session = nil
+        agent = nil
+        pi = nil
         folder = nil
         openSessionId = nil
         ask = nil
         isStreaming = false
     }
 
-    private func listen(to session: PiSession) {
+    private func listen(to agent: any AgentSession) {
         eventTask = Task { [weak self] in
-            for await event in session.events {
+            for await event in agent.events {
                 self?.handle(event)
             }
         }
@@ -280,14 +294,15 @@ final class Chat {
         case "tool_execution_update":
             guard let index = toolIndex(event) else { return }
             messages[index].tool?.output = event["partialResult"]?.contentText ?? ""
+            fillIn(event["args"], at: index)
+            fillIn(diff: event["diff"]?.string, at: index)
 
         case "tool_execution_end":
             guard let index = toolIndex(event) else { return }
+            fillIn(event["args"], at: index)
             messages[index].tool?.output = event["result"]?.contentText ?? ""
             // pi computes the diff itself, so there is no need to reinvent one.
-            let diff = event["result"]?["details"]?["diff"]?.string ?? ""
-            messages[index].tool?.diff = diff
-            messages[index].tool?.result = DiffSummary.text(diff)
+            fillIn(diff: event["result"]?["details"]?["diff"]?.string, at: index)
             messages[index].tool?.failed = event["isError"]?.bool ?? false
             messages[index].done = true
 
@@ -367,7 +382,7 @@ final class Chat {
     /// would be a permission you never granted.
     func alwaysAllow(_ ask: Ask) {
         alwaysAllowed.insert(ask.title)
-        answer(ask, confirmed: true)
+        respond { try await $0.answer(id: ask.id, choice: .always) }
     }
 
     func forgetAllowances() {
@@ -375,15 +390,15 @@ final class Chat {
     }
 
     func answer(_ ask: Ask, confirmed: Bool) {
-        reply(["id": .string(ask.id), "confirmed": .bool(confirmed)])
+        respond { try await $0.answer(id: ask.id, choice: confirmed ? .allow : .deny) }
     }
 
     func answer(_ ask: Ask, value: String) {
-        reply(["id": .string(ask.id), "value": .string(value)])
+        respond { try await $0.answer(id: ask.id, value: value) }
     }
 
     func dismiss(_ ask: Ask) {
-        reply(["id": .string(ask.id), "cancelled": .bool(true)])
+        respond { try await $0.dismiss(id: ask.id) }
     }
 
     /// Answering from the log: the card records what was chosen and stops offering.
@@ -401,12 +416,12 @@ final class Chat {
         }
     }
 
-    private func reply(_ fields: [String: JSONValue]) {
+    private func respond(
+        _ work: @escaping @Sendable (any AgentSession) async throws -> Void
+    ) {
         ask = nil
-        guard let session else { return }
-        var payload = fields
-        payload["type"] = .string("extension_ui_response")
-        Task { try? await session.post(payload) }
+        guard let agent else { return }
+        Task { try? await work(agent) }
     }
 
     /// pi ships no permission prompts, so the app brings its own gate.
@@ -418,14 +433,14 @@ final class Chat {
     }
 
     func loadModels() async {
-        guard models.isEmpty, let session else { return }
-        guard let response = try? await session.send("get_available_models") else { return }
+        guard models.isEmpty, let pi else { return }
+        guard let response = try? await pi.send("get_available_models") else { return }
         models = ModelChoice.all(from: response)
     }
 
     func use(_ choice: ModelChoice) async {
-        guard let session else { return }
-        guard let response = try? await session.send(
+        guard let pi else { return }
+        guard let response = try? await pi.send(
             "set_model",
             fields: ["provider": .string(choice.provider), "modelId": .string(choice.modelId)]
         ) else { return }
@@ -439,15 +454,15 @@ final class Chat {
     /// pi answers success for a level the model does not offer and then ignores it,
     /// so only ever send one from this list.
     func setThinking(_ level: String) async {
-        guard let session, thinkingLevels.contains(level) else { return }
-        guard (try? await session.send("set_thinking_level", fields: ["level": .string(level)])) != nil
+        guard let pi, thinkingLevels.contains(level) else { return }
+        guard (try? await pi.send("set_thinking_level", fields: ["level": .string(level)])) != nil
         else { return }
         thinkingLevel = level
     }
 
     private func refreshThinkingLevels() async {
-        guard let session else { return }
-        guard let response = try? await session.send("get_available_thinking_levels") else { return }
+        guard let pi else { return }
+        guard let response = try? await pi.send("get_available_thinking_levels") else { return }
         thinkingLevels = response["data"]?["levels"]?.array?.compactMap(\.string) ?? []
 
         if !thinkingLevels.contains(thinkingLevel) {
@@ -456,9 +471,26 @@ final class Chat {
     }
 
     private func refreshStats() async {
-        guard let session else { return }
-        guard let response = try? await session.send("get_session_stats") else { return }
+        guard let pi else { return }
+        guard let response = try? await pi.send("get_session_stats") else { return }
         stats = SessionStats(response)
+    }
+
+    /// Some agents announce a tool call before they know what they are calling it with,
+    /// and fill the arguments in as they go. pi sends them up front, so this never fires
+    /// for a pi session.
+    private func fillIn(_ args: JSONValue?, at index: Int) {
+        guard let args else { return }
+        messages[index].tool?.arguments = args.prettyText
+        messages[index].tool?.preview = ChatMessage.ToolCall.preview(of: args)
+    }
+
+    /// Some agents stream the diff on the updates before a call ends and send none with
+    /// the end itself, so an empty one must not wipe what those updates established.
+    private func fillIn(diff: String?, at index: Int) {
+        guard let diff, !diff.isEmpty else { return }
+        messages[index].tool?.diff = diff
+        messages[index].tool?.result = DiffSummary.text(diff)
     }
 
     private func toolIndex(_ event: JSONValue) -> Int? {

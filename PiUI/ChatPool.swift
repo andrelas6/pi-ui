@@ -16,10 +16,10 @@ final class ChatPool {
         self.store = store
     }
 
-    func startNew(in folder: URL) {
+    func startNew(in folder: URL, using agent: Agent = .pi) {
         let chat = make()
         current = chat
-        chat.open(folder, thenType: true)
+        chat.open(folder, using: agent, thenType: true)
     }
 
     func show(_ saved: SavedSession, thenType: Bool = false) {
@@ -33,7 +33,7 @@ final class ChatPool {
 
         let chat = make()
         current = chat
-        chat.open(saved.folder, sessionId: saved.id, thenType: thenType)
+        chat.open(saved.folder, using: saved.runs, sessionId: saved.id, thenType: thenType)
     }
 
     private func make() -> Chat {

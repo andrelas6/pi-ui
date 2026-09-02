@@ -5,7 +5,7 @@ struct SidebarView: View {
     let store: SessionStore
     let pool: ChatPool?
     let open: (SavedSession) -> Void
-    let start: (URL) -> Void
+    let start: (URL, Agent) -> Void
 
     @State private var renaming: SavedSession?
     @State private var draftName = ""
@@ -27,13 +27,18 @@ struct SidebarView: View {
         HStack {
             Kicker(text: "sessions")
             Spacer()
-            Button(action: pickFolder) {
+            Menu {
+                Button(Agent.pi.newSessionTitle) { pickFolder(for: .pi) }
+                Button(Agent.claude.newSessionTitle) { pickFolder(for: .claude) }
+            } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 11, weight: .medium))
             }
-            .buttonStyle(.plain)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
             .foregroundStyle(Palette.neutral(600))
-            .help("Pick a folder to run pi in (⌃T)")
+            .help("Start a session (⌃T for pi, ⇧⌃T for Claude)")
         }
         .padding(.horizontal, Space.four)
         .padding(.top, Space.four)
@@ -142,9 +147,9 @@ struct SidebarView: View {
         deleting = nil
     }
 
-    private func pickFolder() {
-        guard let folder = FolderPicker.pick() else { return }
-        start(folder)
+    private func pickFolder(for agent: Agent) {
+        guard let folder = FolderPicker.pick(for: agent) else { return }
+        start(folder, agent)
     }
 }
 
@@ -176,17 +181,19 @@ private struct SessionRow: View {
                         .truncationMode(.tail)
                         .frame(height: 22)
 
-                    if let branch {
-                        HStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(session.runs.name.lowercased())
+                        if let branch {
+                            Text("·")
                             Image(systemName: "arrow.triangle.branch")
                                 .font(.system(size: 11, weight: .light))
                             Text(branch)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }
-                        .font(Typeface.mono(10.5))
-                        .foregroundStyle(Palette.neutral(600))
                     }
+                    .font(Typeface.mono(10.5))
+                    .foregroundStyle(Palette.neutral(600))
                 }
 
                 Spacer(minLength: Space.two)

@@ -92,7 +92,8 @@
         } else {
             diff.style.display = "none";
             args.textContent = tool.arguments || "";
-            args.style.display = "";
+            // An announced call whose arguments have not arrived yet has nothing to show.
+            args.style.display = tool.arguments ? "" : "none";
         }
 
         var out = card.querySelector(".out");
