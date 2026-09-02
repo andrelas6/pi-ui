@@ -25,6 +25,25 @@ struct TranscriptPageTests {
         #expect(TranscriptPageTests.page.contains("@media (prefers-color-scheme: dark)"))
     }
 
+    /// Tool cards open on request. A card that printed its whole output pushed the
+    /// conversation off the screen — a `find` with five hits buried the reply.
+    @Test func leavesToolCardsClosedUntilAsked() {
+        let page = TranscriptPageTests.page
+        // Opening it at build time was what made every card print itself in full.
+        #expect(page.contains(#"card.className = "card";"#))
+        #expect(page.contains("card.className = \"card\";\n        card.open = true;") == false)
+        #expect(page.contains(#"<span class="toggle">"#))
+        // A diff still opens itself, but only once, so a closed card stays closed.
+        #expect(page.contains("card.dataset.shown"))
+    }
+
+    /// Opening one has to be visibly possible, or the output looks lost rather than folded.
+    @Test func marksACardAsSomethingToOpen() {
+        let page = TranscriptPageTests.page
+        #expect(page.contains(".call .toggle::before"))
+        #expect(page.contains("cursor: pointer"))
+    }
+
     @Test func inlinesTheRenderScript() {
         #expect(TranscriptPageTests.page.contains("window.piui"))
         #expect(TranscriptPageTests.page.contains("marked.parse"))
