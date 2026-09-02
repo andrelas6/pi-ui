@@ -12,6 +12,9 @@ actor AgentProcess {
     private let executable: URL
     private let arguments: [String]
     private let folder: URL
+    /// Names this process in the log, e.g. `claude:pi-ui`.
+    private let channel: String
+    private let log: EventLog
 
     private var process: Process?
     private var input: FileHandle?
@@ -24,10 +27,18 @@ actor AgentProcess {
     nonisolated let lines: AsyncStream<JSONValue>
     private let publish: AsyncStream<JSONValue>.Continuation
 
-    init(executable: URL, arguments: [String], folder: URL) {
+    init(
+        executable: URL,
+        arguments: [String],
+        folder: URL,
+        channel: String = "agent",
+        log: EventLog = .shared
+    ) {
         self.executable = executable
         self.arguments = arguments
         self.folder = folder
+        self.channel = channel
+        self.log = log
         (lines, publish) = AsyncStream.makeStream()
     }
 
@@ -69,9 +80,16 @@ actor AgentProcess {
             Task { await self?.noteExit(code) }
         }
 
+        note("spawn", [
+            "executable": .string(executable.path),
+            "arguments": .array(arguments.map(JSONValue.string)),
+            "folder": .string(folder.path),
+        ])
+
         do {
             try process.run()
         } catch {
+            note("could-not-start", ["reason": .string(error.localizedDescription)])
             throw Failure.couldNotStart(error.localizedDescription)
         }
 
@@ -96,6 +114,7 @@ actor AgentProcess {
 
     func write(_ value: JSONValue) throws {
         guard let input else { throw Failure.notRunning }
+        record(.into, value)
         try input.write(contentsOf: JSONEncoder().encode(value))
         try input.write(contentsOf: Data([0x0A]))
     }
@@ -122,23 +141,45 @@ actor AgentProcess {
 
     private func take(_ chunk: Data) {
         for line in buffer.take(chunk) {
-            guard let value = try? JSONDecoder().decode(JSONValue.self, from: line) else { continue }
+            guard let value = try? JSONDecoder().decode(JSONValue.self, from: line) else {
+                // A line we cannot read is exactly the kind of thing worth knowing about;
+                // dropping it silently hides a protocol mismatch completely.
+                note("undecodable", ["line": .string(String(decoding: line, as: UTF8.self))])
+                continue
+            }
+            record(.from, value)
             publish.yield(value)
         }
     }
 
     private func collect(_ chunk: Data) {
-        errors += String(decoding: chunk, as: UTF8.self)
+        let said = String(decoding: chunk, as: UTF8.self)
+        errors += said
+        let trimmed = said.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            note("stderr", ["said": .string(trimmed)])
+        }
     }
 
     private func noteExit(_ code: Int32) {
         status = code
+        note("exit", ["status": .number(Double(code))])
     }
 
     private func finish() {
         publish.finish()
         process = nil
         input = nil
+    }
+
+    private func record(_ direction: EventLog.Direction, _ value: JSONValue) {
+        let log = log, channel = channel
+        Task { await log.wire(channel, direction, value) }
+    }
+
+    private func note(_ event: String, _ detail: [String: JSONValue] = [:]) {
+        let log = log, channel = channel
+        Task { await log.life(channel, event, detail) }
     }
 
     private static func chunks(from handle: FileHandle) -> AsyncStream<Data> {

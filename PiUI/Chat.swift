@@ -102,7 +102,7 @@ final class Chat {
         do {
             started = try Self.make(kind, folder: folder)
         } catch {
-            problem = error.localizedDescription
+            fail(error.localizedDescription)
             return
         }
 
@@ -128,7 +128,7 @@ final class Chat {
                 // The composer only exists once the session is open, so ask from here.
                 if thenType { self.askToType() }
             } catch {
-                self.problem = error.localizedDescription
+                self.fail(error.localizedDescription)
                 self.pi = nil
             }
         }
@@ -162,6 +162,12 @@ final class Chat {
         }
         await refreshThinkingLevels()
         await refreshStats()
+
+        note("opened", [
+            "agent": .string(kind.rawValue),
+            "folder": .string(folder.path),
+            "resumed": .bool(!opened.messages.isEmpty),
+        ])
     }
 
     func send(_ text: String) {
@@ -176,7 +182,7 @@ final class Chat {
                 do {
                     try await session.steer(message, followUp: followUp)
                 } catch {
-                    problem = error.localizedDescription
+                    fail(error.localizedDescription)
                 }
             }
             return
@@ -187,7 +193,7 @@ final class Chat {
             do {
                 try await session.prompt(message)
             } catch {
-                problem = error.localizedDescription
+                fail(error.localizedDescription)
                 isStreaming = false
             }
         }
@@ -239,6 +245,7 @@ final class Chat {
         if let openSessionId {
             store.markStopped(openSessionId)
         }
+        note("closed")
         session = nil
         pi = nil
         folder = nil
@@ -315,7 +322,7 @@ final class Chat {
                   message["role"]?.string == "assistant",
                   message["stopReason"]?.string == "error"
             else { return }
-            problem = Self.readable(message["errorMessage"]?.string)
+            fail(Self.readable(message["errorMessage"]?.string))
             finishStreaming()
             isStreaming = false
 
@@ -364,6 +371,7 @@ final class Chat {
                 return
             }
             ask = waiting
+            note("asked", ["ask": .string(waiting.id), "tool": .string(waiting.title)])
             guard waiting.method == .confirm else { return }
             messages.append(
                 ChatMessage(
@@ -386,7 +394,7 @@ final class Chat {
     /// would be a permission you never granted.
     func alwaysAllow(_ ask: Ask) {
         alwaysAllowed.insert(ask.title)
-        respond { try await $0.answer(id: ask.id, choice: .always) }
+        respond("always") { try await $0.answer(id: ask.id, choice: .always) }
     }
 
     func forgetAllowances() {
@@ -394,15 +402,17 @@ final class Chat {
     }
 
     func answer(_ ask: Ask, confirmed: Bool) {
-        respond { try await $0.answer(id: ask.id, choice: confirmed ? .allow : .deny) }
+        respond(confirmed ? "allow" : "deny") {
+            try await $0.answer(id: ask.id, choice: confirmed ? .allow : .deny)
+        }
     }
 
     func answer(_ ask: Ask, value: String) {
-        respond { try await $0.answer(id: ask.id, value: value) }
+        respond("value") { try await $0.answer(id: ask.id, value: value) }
     }
 
     func dismiss(_ ask: Ask) {
-        respond { try await $0.dismiss(id: ask.id) }
+        respond("dismiss") { try await $0.dismiss(id: ask.id) }
     }
 
     /// Answering from the log: the card records what was chosen and stops offering.
@@ -420,21 +430,30 @@ final class Chat {
         }
     }
 
+    /// Everything the user is told went wrong, written down as it is shown. Reading the
+    /// log later, this is what lines an error up against the wire traffic around it.
+    private func fail(_ message: String) {
+        problem = message
+        note("problem", ["message": .string(message)])
+    }
+
     /// The agent blocks until a permission request is answered, so a reply that never
     /// lands hangs the turn with nothing on screen. Say it out loud instead.
     private func respond(
+        _ answer: String,
         _ work: @escaping @Sendable (any AgentSession) async throws -> Void
     ) {
+        note("answered", ["answer": .string(answer)])
         ask = nil
         guard let running = session else {
-            problem = "There is no session open to answer that."
+            fail("There is no session open to answer that.")
             return
         }
         Task {
             do {
                 try await work(running)
             } catch {
-                problem = "Could not answer the request: \(error.localizedDescription)"
+                fail("Could not answer the request: \(error.localizedDescription)")
             }
         }
     }
@@ -506,6 +525,12 @@ final class Chat {
         guard let diff, !diff.isEmpty else { return }
         messages[index].tool?.diff = diff
         messages[index].tool?.result = DiffSummary.text(diff)
+    }
+
+    private func note(_ event: String, _ detail: [String: JSONValue] = [:]) {
+        var fields = detail
+        fields["session"] = .string(openSessionId ?? "none")
+        Task { await EventLog.shared.app(event, fields) }
     }
 
     private func toolIndex(_ event: JSONValue) -> Int? {
