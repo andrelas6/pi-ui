@@ -48,9 +48,9 @@
     function buildCard(node) {
         var card = document.createElement("details");
         card.className = "card";
-        card.open = true;
         card.innerHTML =
             '<summary class="call">' +
+            '<span class="toggle"></span>' +
             '<span class="name"></span>' +
             '<span class="preview"></span>' +
             '<span class="result"></span>' +
@@ -72,7 +72,8 @@
 
         card.querySelector(".name").textContent = tool.name || "";
         card.querySelector(".preview").textContent = tool.preview || "";
-        card.querySelector(".result").textContent = tool.result || "";
+        // A diff counts its own changes; anything else says how much there is to expand.
+        card.querySelector(".result").textContent = tool.result || measure(tool.output);
         // A diff says everything the raw edit arguments would, and says it better.
         var diff = card.querySelector(".diff");
         var args = card.querySelector(".args");
@@ -89,6 +90,12 @@
             });
             diff.style.display = "";
             args.style.display = "none";
+            // A diff is the reason the card exists, so show it — once. After that the card
+            // is the reader's to open and close.
+            if (!card.dataset.shown) {
+                card.dataset.shown = "1";
+                card.open = true;
+            }
         } else {
             diff.style.display = "none";
             args.textContent = tool.arguments || "";
@@ -222,6 +229,13 @@
 
         prose.textContent = message.text || "";
         prose.appendChild(document.createElement("span")).className = "cursor";
+    }
+
+    // Rows rather than characters: "4 lines" says how much is hidden, 132 does not.
+    function measure(output) {
+        if (!output) return "";
+        var rows = output.replace(/\n+$/, "").split("\n").length;
+        return rows + (rows === 1 ? " line" : " lines");
     }
 
     function signature(message) {

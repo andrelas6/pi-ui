@@ -104,8 +104,17 @@ hr { border: 0; border-top: 1px solid var(--color-divider); margin: 1.1em 0; }
     color: var(--color-neutral-700);
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-divider);
-    cursor: default;
+    cursor: pointer;
 }
+
+/* Square, like the registration marks, rather than a stock disclosure triangle. */
+.call .toggle {
+    color: var(--color-neutral-500);
+    width: 7px;
+    flex: none;
+}
+.call .toggle::before { content: "+"; }
+details.card[open] > .call .toggle::before { content: "\2212"; }
 
 .call .name { font-weight: 500; }
 .call .preview {
