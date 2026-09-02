@@ -105,6 +105,28 @@ struct PermissionCardTests {
         #expect(chat.messages.isEmpty)
     }
 
+    /// Shift-Cmd-Y takes the standing grant, so it must not be reachable by the same
+    /// reflex as a one-off allow.
+    @Test func theAlwaysKeyGrantsTheStandingPermission() throws {
+        let chat = newChat()
+        chat.handle(try event(confirm("bash")))
+        let pending = try #require(chat.ask)
+
+        chat.answerRequest(id: pending.id, choice: ChatMessage.Request.always)
+
+        #expect(chat.alwaysAllowed.contains("bash"))
+        #expect(chat.messages[0].request?.answer == "always")
+    }
+
+    @Test func theThreeChoicesStayDistinct() {
+        let choices = Set([
+            ChatMessage.Request.allow,
+            ChatMessage.Request.always,
+            ChatMessage.Request.deny,
+        ])
+        #expect(choices.count == 3)
+    }
+
     @Test func theKeysAnswerTheSameWayTheButtonsDo() throws {
         let chat = newChat()
         chat.handle(try event(confirm("bash")))
