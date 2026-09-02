@@ -8,6 +8,18 @@ struct PiUIApp: App {
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var shortcuts = Shortcuts()
+    @State private var appearance = Appearance.saved
+
+    private var appearanceChoice: Binding<Appearance> {
+        Binding(
+            get: { appearance },
+            set: { choice in
+                appearance = choice
+                Appearance.saved = choice
+                choice.apply()
+            }
+        )
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -27,6 +39,14 @@ struct PiUIApp: App {
             CommandGroup(after: .toolbar) {
                 Button("Commands…") { shortcuts.askForPalette() }
                     .keyboardShortcut("k", modifiers: .command)
+            }
+
+            CommandMenu("View") {
+                Picker("Appearance", selection: appearanceChoice) {
+                    ForEach(Appearance.allCases) { choice in
+                        Text(choice.label).tag(choice)
+                    }
+                }
             }
 
             CommandMenu("Sessions") {
