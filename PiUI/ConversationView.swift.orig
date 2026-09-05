@@ -120,12 +120,7 @@ struct ConversationView: View {
                             )
                         }
                         .onChange(of: chat.draft) { _, newValue in
-                            if let match = atToken(in: newValue) {
-                                fileQuery = match.query
-                                pickingFile = true
-                            } else {
-                                pickingFile = false
-                            }
+                            checkFileQuery(newValue)
                         }
                 }
                 .padding(.horizontal, Space.four)
@@ -247,23 +242,28 @@ struct ConversationView: View {
     }
 
     private var chatFiles: [String] {
-        chat.files.paths
+        func flatten(_ nodes: [FileNode]) -> [String] {
+            nodes.flatMap { node in
+                node.isFolder ? flatten(node.children) : [node.path]
+            }
+        }
+        return flatten(chat.files.nodes)
     }
 
-    /// Finds an `@` token that is either at the start of the string or preceded by whitespace.
-    private func atToken(in text: String) -> (range: Range<String.Index>, query: String)? {
-        let pattern = "(?:^|\\s)(@[^\\s]+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let range = Range(match.range(at: 1), in: text)
-        else { return nil }
-
-        return (range: range, query: String(text[range].dropFirst()))
+    private func checkFileQuery(_ text: String) {
+        // If the text ends with a word starting with @, and it has more than just @
+        let parts = text.components(separatedBy: .whitespacesAndNewlines)
+        if let last = parts.last, last.hasPrefix("@"), last.count > 1 {
+            fileQuery = String(last.dropFirst())
+            pickingFile = true
+        } else {
+            pickingFile = false
+        }
     }
 
     private func insertFile(_ file: String) {
-        if let match = atToken(in: chat.draft) {
-            chat.draft.replaceSubrange(match.range, with: file + " ")
+        if let range = chat.draft.range(of: "@[^\\s]*$", options: .regularExpression) {
+            chat.draft.replaceSubrange(range, with: file + " ")
         } else {
             chat.draft += file + " "
         }

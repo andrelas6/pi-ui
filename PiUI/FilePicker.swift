@@ -12,7 +12,7 @@ struct FilePicker: View {
             HStack {
                 Kicker(text: "files", size: 12, color: Palette.neutral(700))
                 Spacer()
-                Text("\(found.count)")
+                Text(found.count > 50 ? "50+" : "\(found.count)")
                     .font(Typeface.mono(11))
                     .foregroundStyle(Palette.neutral(500))
             }
@@ -28,9 +28,12 @@ struct FilePicker: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(found.enumerated()), id: \.element) { index, file in
+                            ForEach(Array(found.enumerated()), id: \.offset) { index, file in
                                 Row(file: file, isSelected: index == selection) { pick(file) }
                                     .id(index)
+                                    .onHover { hovering in
+                                        if hovering { selection = index }
+                                    }
                             }
                         }
                     }
@@ -45,8 +48,7 @@ struct FilePicker: View {
         .blueprint(fill: Palette.neutral(100))
         .onExitCommand(perform: close)
         .background {
-            // Invisible capture for keyboard navigation
-            ArrowsMonitor(up: up, down: down, enter: enter)
+            ArrowsMonitor(up: up, down: down, enter: enter, isShowing: true)
         }
         .onChange(of: query) { _, _ in
             selection = 0
@@ -57,8 +59,16 @@ struct FilePicker: View {
 
     private var found: [String] {
         let lower = query.lowercased()
-        // If exact prefix or contains
-        return files.filter { $0.lowercased().contains(lower) }
+        let scored = files.compactMap { file -> (file: String, score: Int)? in
+            let lowerFile = file.lowercased()
+            guard lowerFile.contains(lower) else { return nil }
+            let name = (file as NSString).lastPathComponent.lowercased()
+            if name.hasPrefix(lower) { return (file, 3) }
+            if name.contains(lower) { return (file, 2) }
+            return (file, 1)
+        }
+
+        return Array(scored.sorted(by: { $0.score > $1.score }).map(\.file).prefix(50))
     }
 
     private var empty: some View {
@@ -91,8 +101,6 @@ struct FilePicker: View {
         let isSelected: Bool
         let run: () -> Void
 
-        @State private var hovering = false
-
         var body: some View {
             Button(action: run) {
                 HStack(alignment: .firstTextBaseline, spacing: Space.two) {
@@ -106,11 +114,10 @@ struct FilePicker: View {
                 .padding(.horizontal, Space.four)
                 .padding(.vertical, Space.two)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(isSelected || hovering ? Palette.accent(100) : .clear)
+                .background(isSelected ? Palette.accent(100) : .clear)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .onHover { hovering = $0 }
         }
     }
 }
