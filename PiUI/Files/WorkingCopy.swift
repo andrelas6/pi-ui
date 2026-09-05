@@ -3,6 +3,7 @@ import Foundation
 /// What the file pane shows: the tracked tree, what changed, and the totals.
 struct WorkingCopy: Sendable {
     var nodes: [FileNode] = []
+    var paths: [String] = []
     var changed = 0
     var added = 0
     var removed = 0
@@ -33,8 +34,10 @@ struct WorkingCopy: Sendable {
         let shortstat = Git.run(["diff", "--shortstat", "HEAD"], in: folder) ?? ""
         let tally = GitStatus.tally(shortstat: shortstat)
 
+        let pathsList = Array(paths)
         return WorkingCopy(
-            nodes: FileTree.build(paths: Array(paths), badges: badges),
+            nodes: FileTree.build(paths: pathsList, badges: badges),
+            paths: pathsList.sorted(),
             changed: badges.count,
             added: tally.added,
             removed: tally.removed

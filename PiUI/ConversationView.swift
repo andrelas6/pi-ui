@@ -5,6 +5,8 @@ struct ConversationView: View {
     @FocusState private var typing: Bool
     @State private var pickingModel = false
     @State private var pane: CGSize = .zero
+    @State private var pickingFile = false
+    @State private var fileQuery = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,6 +106,27 @@ struct ConversationView: View {
                         .lineLimit(1...6)
                         .focused($typing)
                         .onSubmit(send)
+                        .popover(isPresented: $pickingFile, arrowEdge: .top) {
+                            FilePicker(
+                                files: chatFiles,
+                                query: fileQuery,
+                                pick: { file in
+                                    insertFile(file)
+                                    pickingFile = false
+                                },
+                                close: {
+                                    pickingFile = false
+                                }
+                            )
+                        }
+                        .onChange(of: chat.draft) { _, newValue in
+                            if let match = atToken(in: newValue) {
+                                fileQuery = match.query
+                                pickingFile = true
+                            } else {
+                                pickingFile = false
+                            }
+                        }
                 }
                 .padding(.horizontal, Space.four)
                 .padding(.top, Space.four)
@@ -221,6 +244,29 @@ struct ConversationView: View {
     private func send() {
         chat.send(chat.draft)
         chat.draft = ""
+    }
+
+    private var chatFiles: [String] {
+        chat.files.paths
+    }
+
+    private static let atRegex = try! NSRegularExpression(pattern: "(?:^|\\s)(@[^\\s]+)$")
+
+    /// Finds an `@` token that is either at the start of the string or preceded by whitespace.
+    private func atToken(in text: String) -> (range: Range<String.Index>, query: String)? {
+        guard let match = Self.atRegex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text)
+        else { return nil }
+
+        return (range: range, query: String(text[range].dropFirst()))
+    }
+
+    private func insertFile(_ file: String) {
+        if let match = atToken(in: chat.draft) {
+            chat.draft.replaceSubrange(match.range, with: file + " ")
+        } else {
+            chat.draft += file + " "
+        }
     }
 }
 
