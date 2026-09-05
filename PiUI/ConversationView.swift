@@ -5,6 +5,8 @@ struct ConversationView: View {
     @FocusState private var typing: Bool
     @State private var pickingModel = false
     @State private var pane: CGSize = .zero
+    @State private var pickingFile = false
+    @State private var fileQuery = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,6 +106,22 @@ struct ConversationView: View {
                         .lineLimit(1...6)
                         .focused($typing)
                         .onSubmit(send)
+                        .popover(isPresented: $pickingFile, arrowEdge: .top) {
+                            FilePicker(
+                                files: chatFiles,
+                                query: fileQuery,
+                                pick: { file in
+                                    insertFile(file)
+                                    pickingFile = false
+                                },
+                                close: {
+                                    pickingFile = false
+                                }
+                            )
+                        }
+                        .onChange(of: chat.draft) { _, newValue in
+                            checkFileQuery(newValue)
+                        }
                 }
                 .padding(.horizontal, Space.four)
                 .padding(.top, Space.four)
@@ -221,6 +239,34 @@ struct ConversationView: View {
     private func send() {
         chat.send(chat.draft)
         chat.draft = ""
+    }
+
+    private var chatFiles: [String] {
+        func flatten(_ nodes: [FileNode]) -> [String] {
+            nodes.flatMap { node in
+                node.isFolder ? flatten(node.children) : [node.path]
+            }
+        }
+        return flatten(chat.files.nodes)
+    }
+
+    private func checkFileQuery(_ text: String) {
+        // If the text ends with a word starting with @, and it has more than just @
+        let parts = text.components(separatedBy: .whitespacesAndNewlines)
+        if let last = parts.last, last.hasPrefix("@"), last.count > 1 {
+            fileQuery = String(last.dropFirst())
+            pickingFile = true
+        } else {
+            pickingFile = false
+        }
+    }
+
+    private func insertFile(_ file: String) {
+        if let range = chat.draft.range(of: "@[^\\s]*$", options: .regularExpression) {
+            chat.draft.replaceSubrange(range, with: file + " ")
+        } else {
+            chat.draft += file + " "
+        }
     }
 }
 
