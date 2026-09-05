@@ -6,7 +6,6 @@ struct ArrowsMonitor: NSViewRepresentable {
     let up: () -> Void
     let down: () -> Void
     let enter: () -> Void
-    let isShowing: Bool
 
     enum ArrowKey: UInt16 {
         case enter = 36
@@ -32,9 +31,6 @@ struct ArrowsMonitor: NSViewRepresentable {
                 coordinator.down()
                 return nil
             case .enter:
-                // Only suppress and handle enter if we actually have a selection (popover is active)
-                // Actually, the monitor only exists when the popover is showing.
-                // But let's check `isShowing` flag.
                 coordinator.enter()
                 return nil
             }

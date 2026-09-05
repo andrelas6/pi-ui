@@ -48,7 +48,7 @@ struct FilePicker: View {
         .blueprint(fill: Palette.neutral(100))
         .onExitCommand(perform: close)
         .background {
-            ArrowsMonitor(up: up, down: down, enter: enter, isShowing: true)
+            ArrowsMonitor(up: up, down: down, enter: enter)
         }
         .onChange(of: query) { _, _ in
             selection = 0
@@ -59,16 +59,18 @@ struct FilePicker: View {
 
     private var found: [String] {
         let lower = query.lowercased()
-        let scored = files.compactMap { file -> (file: String, score: Int)? in
+        let scored = files.compactMap { file -> (file: String, name: String, score: Int)? in
             let lowerFile = file.lowercased()
             guard lowerFile.contains(lower) else { return nil }
             let name = (file as NSString).lastPathComponent.lowercased()
-            if name.hasPrefix(lower) { return (file, 3) }
-            if name.contains(lower) { return (file, 2) }
-            return (file, 1)
+            if name.hasPrefix(lower) { return (file, name, 3) }
+            if name.contains(lower) { return (file, name, 2) }
+            return (file, name, 1)
         }
 
-        return Array(scored.sorted(by: { $0.score > $1.score }).map(\.file).prefix(50))
+        return Array(scored.sorted {
+            $0.score != $1.score ? $0.score > $1.score : $0.file.localizedStandardCompare($1.file) == .orderedAscending
+        }.map(\.file).prefix(50))
     }
 
     private var empty: some View {

@@ -250,11 +250,11 @@ struct ConversationView: View {
         chat.files.paths
     }
 
+    private static let atRegex = try! NSRegularExpression(pattern: "(?:^|\\s)(@[^\\s]+)$")
+
     /// Finds an `@` token that is either at the start of the string or preceded by whitespace.
     private func atToken(in text: String) -> (range: Range<String.Index>, query: String)? {
-        let pattern = "(?:^|\\s)(@[^\\s]+)$"
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+        guard let match = Self.atRegex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let range = Range(match.range(at: 1), in: text)
         else { return nil }
 
